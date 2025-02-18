@@ -37,8 +37,8 @@ export const downloadByUrl = (url: string, resOpts = {type: 'get'}) => {
  */
 httpRequest.interceptors.request.use(config => {
     console.log("请求拦截器", config);
-    if (sessionStorage.getItem('jwt')) {
-        config.headers.Authorization = sessionStorage.getItem('jwt');
+    if (localStorage.getItem('jwt')) {
+        config.headers.Authorization = localStorage.getItem('jwt');
     }
     return config
 }, err => {

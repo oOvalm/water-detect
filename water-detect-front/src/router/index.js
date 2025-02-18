@@ -116,8 +116,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-    const userInfo = VueCookies.get("userInfo");
-    if (to.meta.needLogin != null && to.meta.needLogin && userInfo == null) {
+    const jwt = localStorage.getItem("jwt");
+    if (to.meta.needLogin != null && to.meta.needLogin && jwt == null) {
         router.push("/login");
     }
     next();

@@ -1,120 +1,164 @@
 <template>
-  <!--<TheWelcome/>-->
-  <el-upload
-      class="avatar-uploader"
-      action="https://run.mocky.io/v3/9d059bf9-4660-45f2-925d-ce80ad6c4d15"
-      v-bind:data="{ FoldPath: '上传目录', SecretKey: '安全验证' }"
-      v-bind:on-progress="uploadVideoProcess"
-      v-bind:on-success="handleVideoSuccess"
-      v-bind:before-upload="beforeUploadVideo"
-      v-bind:show-file-list="false"
-      :headers="headers"
-  >
-    <video
-        v-if="videoForm.showVideoPath != '' && !videoFlag"
-        v-bind:src="videoForm.showVideoPath"
-        class="avatar video-avatar"
-        controls="controls">
-      您的浏览器不支持视频播放
-    </video>
-    <i v-else-if="videoForm.showVideoPath == '' && !videoFlag"
-       class="el-icon-plus avatar-uploader-icon"
-    ></i>
-    <el-progress v-if="videoFlag == true" type="circle"
-                 v-bind:percentage="videoUploadPercent"
-                 style="margin-top: 7px"></el-progress>
-  </el-upload>
+  <div>
+    <el-upload
+        ref="uploadRef"
+        action="#"
+        :auto-upload="false"
+        :multiple="true"
+        :before-upload="beforeUpload"
+        accept=".mp4"
+        :file-list="fileList"
+        @change="handleFileChange"
+        :show-file-list="false"
+    >
+      <el-button type="primary">选择 MP4 文件</el-button>
+    </el-upload>
+    <div v-if="fileList.length > 0">
+      <h3>选择的视频文件信息</h3>
+      <el-table :data="fileList" stripe>
+        <el-table-column prop="thumbnail" label="缩略图">
+          <template #default="{ row }">
+            <img :src="row.thumbnail" alt="视频缩略图" width="100">
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="文件名"></el-table-column>
+        <el-table-column prop="duration" label="时长">
+          <template #default="{ row }">
+            {{ formatDuration(row.duration) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="size" label="文件大小">
+          <template #default="{ row }">
+            {{ size2Str(row.size) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作">
+          <template #default="{ row }">
+            <el-button type="danger" size="small" @click="removeFile(row)">取消上传</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-button type="primary" @click="uploadFiles">确定上传</el-button>
+    </div>
+    <el-progress v-if="uploading" :percentage="uploadProgress"></el-progress>
+  </div>
 </template>
+
 <script setup>
+import {ref} from 'vue';
+import {ElUpload, ElButton, ElTable, ElTableColumn, ElProgress} from 'element-plus';
+import {formatDuration, size2Str} from "@/utils/Utils.ts";
 
-import TheWelcome from "@/components/TheWelcome.vue";
-import {ref} from "vue";
+const uploadRef = ref(null);
+const fileList = ref([]);
+const uploading = ref(false);
+const uploadProgress = ref(0);
 
-const videoFlag = ref(false)
-//是否显示进度条
-const videoUploadPercent = ref("")
-//进度条的进度，
-const isShowUploadVideo = ref(false)
-//显示上传按钮
-const videoForm = ref({
-  showVideoPath: "",  //回显的变量
-})
+// 上传前的钩子函数
+const beforeUpload = (file) => {
+  return file.type === 'video/mp4';
+};
 
-//上传前回调
-const beforeUploadVideo = (file) => {
-  var fileSize = file.size / 1024 / 1024 < 50;   //控制大小  修改50的值即可
-  if (
-      [
-        "video/mp4",
-        "video/ogg",
-        "video/flv",
-        "video/avi",
-        "video/wmv",
-        "video/rmvb",
-        "video/mov",
-      ].indexOf(file.type) == -1     //控制格式
-  ) {
-    layer.msg("请上传正确的视频格式");
-    return false;
+// 处理文件选择变化
+const handleFileChange = async (file, newFileList) => {
+  const newFiles = [];
+  for (const fileItem of newFileList) {
+    console.log(fileItem.raw)
+    console.log(file.raw instanceof File)
+    const duration = await getVideoDuration(fileItem.raw);
+    const thumbnail = await getVideoThumbnail(fileItem.raw);
+    newFiles.push({
+      ...fileItem,
+      duration,
+      thumbnail,
+    });
   }
-  if (!fileSize) {
-    layer.msg("视频大小不能超过50MB");
-    return false;
+  fileList.value = newFiles;
+};
+
+// 获取视频时长
+const getVideoDuration = (file) => {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = URL.createObjectURL(file);
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+  });
+};
+
+// 获取视频缩略图
+const getVideoThumbnail = (file) => {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = URL.createObjectURL(file);
+
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      const randomTime = Math.random() * duration;
+
+      // 设置视频当前时间为随机时间点
+      video.currentTime = randomTime;
+
+      if ('requestVideoFrameCallback' in video) {
+        video.requestVideoFrameCallback(() => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(video.src);
+          resolve(canvas.toDataURL('image/jpeg'));
+        });
+      } else {
+        console.warn('当前浏览器不支持 requestVideoFrameCallback，尝试备用方案');
+        // 可以在这里添加备用方案，如下面的 setTimeout 方式
+      }
+    };
+
+    video.onerror = () => {
+      console.error('视频加载出错');
+      resolve('');
+    };
+  });
+};
+
+// 移除文件
+const removeFile = (file) => {
+  const index = fileList.value.findIndex((f) => f.uid === file.uid);
+  if (index !== -1) {
+    fileList.value.splice(index, 1);
   }
-  isShowUploadVideo.value = false;
-}
-//进度条
-const uploadVideoProcess = (event, file, fileList) => {    //注意在data中添加对应的变量名
-  videoFlag.value = true;
-  videoUploadPercent.value = file.percentage.toFixed(0) * 1;
-}
-//上传成功回调
-const handleVideoSuccess = (res, file) => {
-  isShowUploadVideo.value = true;
-  videoFlag.value = false;
-  videoUploadPercent.value = 0;
+};
 
-  console.log(res);
-  //后台上传数据
-  if (res.success == true) {
-    videoForm.value.showVideoPath = res.data.url;    //上传成功后端返回视频地址 回显
-  } else {
-    this.$message.error("上传失败！");
-  }
-}
+// 上传文件
+const uploadFiles = () => {
+  uploading.value = true;
+  const formData = new FormData();
+  fileList.value.forEach((file) => {
+    formData.append('videos', file.raw);
+  });
 
-
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/upload', true);
+  xhr.upload.addEventListener('progress', (event) => {
+    if (event.lengthComputable) {
+      uploadProgress.value = (event.loaded / event.total) * 100;
+    }
+  });
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+      uploading.value = false;
+      window.location.href = '/';
+    }
+  };
+  xhr.send(formData);
+};
 </script>
 
 <style scoped>
-.avatar-uploader-icon {
-  border: 1px dashed #d9d9d9 !important;
-}
-
-.avatar-uploader .el-upload {
-  border: 1px dashed #d9d9d9 !important;
-  border-radius: 6px !important;
-  position: relative !important;
-  overflow: hidden !important;
-}
-
-.avatar-uploader .el-upload:hover {
-  border: 1px dashed #d9d9d9 !important;
-  border-color: #409eff;
-}
-
-.avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
-  width: 300px;
-  height: 178px;
-  line-height: 178px;
-  text-align: center;
-}
-
-.avatar {
-  width: 300px;
-  height: 178px;
-  display: block;
-}
+/* 可以添加一些自定义样式 */
 </style>

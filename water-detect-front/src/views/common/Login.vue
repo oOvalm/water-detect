@@ -189,7 +189,6 @@ const api = {
   register: "/account/register",
   login: "/account/login",
   resetPwd: "/account/resetPwd",
-  // qqlogin: "/qqlogin",
 };
 
 // 0:注册 1:登录 2:重置密码
@@ -301,7 +300,7 @@ const resetForm = () => {
 
     //登录
     if (opType.value == 1) {
-      const cookieLoginInfo = sessionStorage.getItem("loginInfo");
+      const cookieLoginInfo = localStorage.getItem("loginInfo");
       if (cookieLoginInfo) {
         formData.value = cookieLoginInfo;
       }
@@ -344,29 +343,28 @@ const doSubmit = () => {
     httpRequest.post(url, params).then(({data}) => {
       data = JSON.parse(data)
       console.log(data)
+      if (data.code != 0) {
+        ElMessage.error(data.msg);
+        return
+      }
       //注册返回
       if (opType.value == 0) {
-        if (data.code == 0) {
-          ElMessage.success("注册成功,请登录");
-          showPanel(1);
-        } else {
-          ElMessage.error(data.msg);
-        }
+        ElMessage.success("注册成功,请登录");
+        showPanel(1);
       } else if (opType.value == 1) {
         //登录
         if (params.rememberMe) {
-          const loginInfo = {
+          localStorage.setItem("loginInfo", {
             email: params.email,
             password: params.password,
             rememberMe: params.rememberMe,
-          };
-          sessionStorage.setItem("loginInfo", loginInfo, "7d");
+          });
         } else {
-          sessionStorage.removeItem("loginInfo");
+          localStorage.removeItem("loginInfo");
         }
         ElMessage.success("登录成功");
         //存储cookie
-        sessionStorage.set("userInfo", result.data, 0);
+        localStorage.setItem("jwt", `Bearer ${data.data.access}`);
         router.push("/");
       } else if (opType.value == 2) {
         //重置密码
