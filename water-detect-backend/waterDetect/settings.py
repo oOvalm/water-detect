@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -185,3 +186,8 @@ CACHES = {
 # 会话存储使用 Redis
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
+
+# 媒体文件保存的根目录
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# 媒体文件的 URL 前缀
+MEDIA_URL = '/media/'

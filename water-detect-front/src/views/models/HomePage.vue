@@ -37,21 +37,26 @@
             <el-button type="danger" size="small" @click="removeFile(row)">取消上传</el-button>
           </template>
         </el-table-column>
+        <el-table-column label="上传进度">
+          <template #default="{ row }">
+            <el-progress :status="row.uploadStatus"
+                         :percentage="row.uploadProgress ?? 0.0"></el-progress>
+          </template>
+        </el-table-column>
       </el-table>
       <el-button type="primary" @click="uploadFiles">确定上传</el-button>
     </div>
-    <el-progress v-if="uploading" :percentage="uploadProgress"></el-progress>
   </div>
 </template>
 
 <script setup>
 import {ref} from 'vue';
-import {ElUpload, ElButton, ElTable, ElTableColumn, ElProgress} from 'element-plus';
+import {ElButton, ElMessage, ElProgress, ElTable, ElTableColumn, ElUpload} from 'element-plus';
 import {formatDuration, size2Str} from "@/utils/Utils.ts";
+import httpRequest from "@/api/httpRequest.ts";
 
 const uploadRef = ref(null);
 const fileList = ref([]);
-const uploading = ref(false);
 const uploadProgress = ref(0);
 
 // 上传前的钩子函数
@@ -135,28 +140,48 @@ const removeFile = (file) => {
 };
 
 // 上传文件
-const uploadFiles = () => {
-  uploading.value = true;
-  const formData = new FormData();
-  fileList.value.forEach((file) => {
-    formData.append('videos', file.raw);
-  });
-
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', '/upload', true);
-  xhr.upload.addEventListener('progress', (event) => {
-    if (event.lengthComputable) {
-      uploadProgress.value = (event.loaded / event.total) * 100;
-    }
-  });
-  xhr.onreadystatechange = () => {
-    if (xhr.readyState === 4 && xhr.status === 200) {
-      uploading.value = false;
-      window.location.href = '/';
-    }
-  };
-  xhr.send(formData);
+const uploadFiles = async () => {
+  const uploadPromises = fileList.value.map(uploadSingleFile);
+  try {
+    await Promise.all(uploadPromises);
+    ElMessage.success("文件上传完成！")
+  } catch (error) {
+    console.error('部分文件上传失败:', error);
+    ElMessage.warning('有文件上传失败')
+  }
 };
+
+// 上传单个文件
+const uploadSingleFile = async (file) => {
+  return new Promise((resolve, reject) => {
+    file.upload = 1;
+    const formData = new FormData();
+    formData.append('video', file.raw);
+    httpRequest.post('/video/', formData, {
+      onUploadProgress: (progressEvent) => {
+        file.uploadProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      },
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    }).then(() => {
+      // file.uploading = false;
+      // 检查是否所有文件都上传完成
+      // const allUploaded = fileList.value.every((f) => !f.uploading);
+      // if (allUploaded) {
+      //   window.location.href = '/';
+      // }
+      file.uploadStatus = 'success'
+      resolve()
+    }).catch((error) => {
+      console.error('文件上传出错:', error);
+      file.upload = 2;
+      file.uploadStatus = 'exception'
+      reject(error)
+    });
+  })
+};
+
 </script>
 
 <style scoped>
