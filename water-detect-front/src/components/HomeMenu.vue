@@ -1,8 +1,8 @@
 <template>
   <div class="home-menu">
     <el-menu class="el-menu-class"
-        :default-active="activeID"
-        unique-opened @select="handleSelect">
+             :default-active="activeID"
+             unique-opened @select="handleSelect">
       <el-menu-item
           v-for="(item, index) in menus"
           :key="index"
@@ -18,7 +18,7 @@
         </template>
       </el-menu-item>
     </el-menu>
-  </div>asd
+  </div>
 </template>
 
 <script setup>
@@ -58,10 +58,10 @@ const handleSelect = (key, keyPath) => {
   // 例如：router.push({ name: 'SomeRouteName' })
   router.push(menus.value[key].path)
 };
-onBeforeMount(()=>{
+onBeforeMount(() => {
   const pat = useRoute().path.replaceAll('/', '');
   for (let i = 0; i < menus.value.length; i++) {
-    if (pat === menus.value[i].path){
+    if (pat === menus.value[i].path) {
       activeID.value = i;
     }
   }

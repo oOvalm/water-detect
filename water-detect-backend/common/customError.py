@@ -15,3 +15,4 @@ class CustomError(Exception):
 
 
 InternalServerError = CustomError(500, constants.INTERNAL_ERROR)
+ParamError = CustomError(401, "params error")
