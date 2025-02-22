@@ -181,15 +181,9 @@ import {ref, reactive, getCurrentInstance, nextTick, onMounted} from "vue";
 import {useRouter, useRoute} from "vue-router";
 import httpRequest from "@/api/httpRequest.ts";
 import {ElMessage, ElMessageBox} from "element-plus";
+import Verify from "@/utils/Verify.js";
 
-const {proxy} = getCurrentInstance();
 const router = useRouter();
-const route = useRoute();
-const api = {
-  register: "/account/register",
-  login: "/account/login",
-  resetPwd: "/account/resetPwd",
-};
 
 // 0:注册 1:登录 2:重置密码
 const opType = ref(1);
@@ -214,7 +208,7 @@ const formDataRef = ref();
 const rules = {
   email: [
     {required: true, message: "请输入邮箱"},
-    {validator: proxy.Verify.email, message: "请输入正确的邮箱"},
+    {validator: Verify.email, message: "请输入正确的邮箱"},
   ],
   password: [{required: true, message: "请输入密码"}],
   emailCaptcha: [{required: true, message: "请输入邮箱验证码"}],
@@ -222,7 +216,7 @@ const rules = {
   registerPassword: [
     {required: true, message: "请输入密码"},
     {
-      validator: proxy.Verify.password,
+      validator: Verify.password,
       message: "密码只能是数字，字母，特殊字符 6-18位",
     },
   ],
@@ -302,7 +296,8 @@ const resetForm = () => {
     if (opType.value == 1) {
       const cookieLoginInfo = localStorage.getItem("loginInfo");
       if (cookieLoginInfo) {
-        formData.value = cookieLoginInfo;
+        const info = JSON.parse(cookieLoginInfo)
+        if (info) formData.value = cookieLoginInfo;
       }
     }
   });
@@ -334,11 +329,11 @@ const doSubmit = () => {
     // }
     let url = null;
     if (opType.value == 0) {
-      url = api.register;
+      url = "/account/register";
     } else if (opType.value == 1) {
-      url = api.login;
+      url = "/account/login";
     } else if (opType.value == 2) {
-      url = api.resetPwd;
+      url = "/account/resetPwd";
     }
     httpRequest.post(url, params).then(({data}) => {
       data = JSON.parse(data)
@@ -354,11 +349,11 @@ const doSubmit = () => {
       } else if (opType.value == 1) {
         //登录
         if (params.rememberMe) {
-          localStorage.setItem("loginInfo", {
+          localStorage.setItem("loginInfo", JSON.stringify({
             email: params.email,
             password: params.password,
             rememberMe: params.rememberMe,
-          });
+          }));
         } else {
           localStorage.removeItem("loginInfo");
         }
