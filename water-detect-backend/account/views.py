@@ -147,6 +147,7 @@ class GetSelfInfoView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
         return NewSuccessResponse({
+            "username": request.user.username,
             "email": request.user.email,
             "password": request.user.password,
             "loi": request.user.last_login,
