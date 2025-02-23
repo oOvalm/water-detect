@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common import constants
-from common.customError import ParamError
+from common.customError import InternalServerError, ParamError
 from common.utils import NewSuccessResponse, NewErrorResponse
 from directory.forms import GetFileListForm
 from directory.models import VideoType, FileInfo
@@ -58,7 +58,7 @@ class FileListView(APIView):
         form = GetFileListForm(request.GET)
         if not form.is_valid():
             logger.error(form.errors)
-            raise ParamError
+            raise ParamError()
         parentID = form.cleaned_data.get('filePid')
         files = FileInfo.objects.filter(file_pid=parentID)
         paginator = self.pagination_class()
@@ -73,8 +73,57 @@ class FileListView(APIView):
             'pageTotal': 0,
             'list': []
         })
-    def put(self, request):
+    def post(self, request):
         body = json.loads(request.body)
         pid = body['filePid']
         FileInfo.objects.createFolder(pid, request.user.id)
         return NewSuccessResponse()
+
+    def put(self, request):
+        body = json.loads(request.body)
+        action_type = body.get('type')
+        file_id = body.get('id')
+        file_pid = body.get('filePid')
+        new_file_name = body.get('newFileName')
+
+        if not action_type or not file_id:
+            raise ParamError(msg="Missing required parameters: type or id")
+
+        file = FileInfo.objects.get(id=file_id)
+        if action_type == "rename":
+            if not new_file_name:
+                raise ParamError(msg="Missing newFileName for rename action")
+            file.filename = new_file_name
+            file.save()
+        elif action_type == "move":
+            if file_pid is None:
+                raise ParamError(msg="Missing filePid for move action")
+            file.file_pid = file_pid
+            file.save()
+        else:
+            raise InternalServerError
+        return NewSuccessResponse(FileInfoSerializer(file).data)
+
+
+    def delete(self, request):
+        file_ids_str = request.query_params.get('fileIDs')
+        if not file_ids_str:
+            raise ParamError("Missing fileIDs parameter")
+
+        file_ids = [int(id) for id in file_ids_str.split(',') if id.strip().isdigit()]
+        if not file_ids:
+            raise ParamError("No valid file IDs provided")
+
+        deleted_count, _ = FileInfo.objects.filter(id__in=file_ids).delete()
+        return NewSuccessResponse({"count", deleted_count})
+
+
+class FolderListView(APIView):
+    def get(self, request):
+        filePid = request.GET.get('filePid')
+        excludeFileIDs = request.GET.get('excludeFileIDs')
+        excludeFileIDs = excludeFileIDs.split(',') if excludeFileIDs else None
+        if filePid is None:
+            raise ParamError("Missing filePid parameter")
+        folders = FileInfo.objects.filter(file_pid=filePid).exclude(id__in=excludeFileIDs)
+        return NewSuccessResponse(FileInfoSerializer(folders).data)

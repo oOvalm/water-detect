@@ -2,34 +2,35 @@
   <div class="top-navigation">
     <template v-if="folderList.length > 0">
       <span class="back link" @click="backParent">返回上一级</span>
-      <el-divider direction="vertical" />
+      <el-divider direction="vertical"/>
     </template>
-    <span v-if="folderList.length == 0" class="all-file">全部文件</span>
+    <span v-if="folderList.length === 0" class="all-file">全部文件</span>
     <span
-      class="link"
-      @click="setCurrentFolder(-1)"
-      v-if="folderList.length > 0"
-      >全部文件</span
+        class="link"
+        @click="setCurrentFolder(-1)"
+        v-if="folderList.length > 0"
+    >全部文件</span
     >
     <template v-for="(item, index) in folderList">
       <span class="iconfont icon-right"></span>
       <span
-        class="link"
-        @click="setCurrentFolder(index)"
-        v-if="index < folderList.length - 1"
-        >{{ item.fileName }}</span
+          class="link"
+          @click="setCurrentFolder(index)"
+          v-if="index < folderList.length - 1"
+      >{{ item.filename }}</span
       >
-      <span v-if="index == folderList.length - 1" class="text">{{
-        item.fileName
-      }}</span>
+      <span v-if="index === folderList.length - 1" class="text">{{
+          item.filename
+        }}</span>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, watch } from "vue";
-import { useRouter, useRoute } from "vue-router";
-const { proxy } = getCurrentInstance();
+import {ref, reactive, getCurrentInstance, watch} from "vue";
+import {useRouter, useRoute} from "vue-router";
+
+const {proxy} = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
 
@@ -58,28 +59,28 @@ const category = ref();
 //目录
 const folderList = ref([]);
 //当前目录
-const currentFolder = ref({ fileId: "0" });
+const currentFolder = ref({fileId: "0"});
 
 //初始化
 const init = () => {
   folderList.value = [];
-  currentFolder.value = { fileId: "0" };
+  currentFolder.value = {fileId: "0"};
   doCallback();
 };
 
 //点击目录
 const openFolder = (data) => {
-  const { fileId, fileName } = data;
+  const {id, filename} = data;
   const folder = {
-    fileName: fileName,
-    fileId: fileId,
+    filename: filename,
+    id: id,
   };
   folderList.value.push(folder);
   currentFolder.value = folder;
   setPath();
 };
 
-defineExpose({ openFolder, init });
+defineExpose({openFolder, init});
 
 //返回上一级
 const backParent = () => {
@@ -97,7 +98,7 @@ const backParent = () => {
 const setCurrentFolder = (index) => {
   if (index == -1) {
     //返回全部
-    currentFolder.value = { fileId: "0" };
+    currentFolder.value = {fileId: "0"};
     folderList.value = [];
   } else {
     currentFolder.value = folderList.value[index];
@@ -119,11 +120,11 @@ const setPath = () => {
   router.push({
     path: route.path,
     query:
-      pathArray.length == 0
-        ? ""
-        : {
-            path: pathArray.join("/"),
-          },
+        pathArray.length == 0
+            ? ""
+            : {
+              path: pathArray.join("/"),
+            },
   });
 };
 
@@ -160,35 +161,35 @@ const doCallback = () => {
 };
 
 watch(
-  () => route,
-  (newVal, oldVal) => {
-    if (!props.watchPath) {
-      return;
-    }
-    //路由切换到其他路由  首页和管理员查看文件列表页面需要监听
-    if (
-      newVal.path.indexOf("/main") === -1 &&
-      newVal.path.indexOf("/settings/fileList") === -1 &&
-      newVal.path.indexOf("/share") === -1
-    ) {
-      return;
-    }
-    const path = newVal.query.path;
-    const categoryId = newVal.params.category;
-    category.value = categoryId;
-    if (path == undefined) {
-      init();
-    } else {
-      getNavigationFolder(path);
-      //设置当前目录
-      let pathArray = path.split("/");
-      currentFolder.value = {
-        fileId: pathArray[pathArray.length - 1],
-      };
-      doCallback();
-    }
-  },
-  { immediate: true, deep: true }
+    () => route,
+    (newVal, oldVal) => {
+      if (!props.watchPath) {
+        return;
+      }
+      //路由切换到其他路由  首页和管理员查看文件列表页面需要监听
+      if (
+          newVal.path.indexOf("/main") === -1 &&
+          newVal.path.indexOf("/settings/fileList") === -1 &&
+          newVal.path.indexOf("/share") === -1
+      ) {
+        return;
+      }
+      const path = newVal.query.path;
+      const categoryId = newVal.params.category;
+      category.value = categoryId;
+      if (path == undefined) {
+        init();
+      } else {
+        getNavigationFolder(path);
+        //设置当前目录
+        let pathArray = path.split("/");
+        currentFolder.value = {
+          fileId: pathArray[pathArray.length - 1],
+        };
+        doCallback();
+      }
+    },
+    {immediate: true, deep: true}
 );
 </script>
 
@@ -198,13 +199,16 @@ watch(
   display: flex;
   align-items: center;
   line-height: 40px;
+
   .all-file {
     font-weight: bold;
   }
+
   .link {
     color: #06a7ff;
     cursor: pointer;
   }
+
   .icon-right {
     color: #06a7ff;
     padding: 0px 5px;

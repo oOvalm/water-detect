@@ -135,6 +135,7 @@ import message from "@/utils/Message.js";
 import * as Utils from "@/utils/Utils.ts";
 import Icon from "@/components/Icon.vue";
 import Table from '@/components/Table.vue'
+import FolderSelect from '@/components/FolderSelect.vue'
 import {ElMessageBox} from "element-plus";
 
 const currentFolder = ref({fileID: -1})
@@ -213,10 +214,6 @@ const rowSelected = (rows) => {
     selectFileIdList.value.push(item.id);
   });
 };
-
-const moveFolderBatch = () => {
-  message.warning("todo")
-}
 const search = () => {
   message.warning(`todo search ${filenameSearchText.value}`)
 }
@@ -315,6 +312,56 @@ const delFileBatch = () => {
       message.error("删除失败")
     })
   });
+};
+
+
+//移动目录
+const folderSelectRef = ref();
+const currentMoveFile = ref({});
+const moveFolder = (data) => {
+  currentMoveFile.value = data;
+  folderSelectRef.value.showFolderDialog(data.id);
+};
+
+//批量移动
+const moveFolderBatch = () => {
+  currentMoveFile.value = {};
+  //批量移动如果选择的是文件夹，那么要讲文件夹也过滤
+  const excludeFileIdList = [currentFolder.value.fileId];
+  selectFileList.value.forEach((item) => {
+    if (item.folderType == 1) {
+      excludeFileIdList.push(item.fileId);
+    }
+  });
+  folderSelectRef.value.showFolderDialog(excludeFileIdList.join(","));
+};
+
+const moveFolderDone = async (folderId) => {
+  if (
+      currentMoveFile.value.file_id === folderId ||
+      currentFolder.value.id === folderId
+  ) {
+    proxy.Message.warning("文件正在当前目录，无需移动");
+    return;
+  }
+  let filedIdsArray = [];
+  if (currentMoveFile.value.fileId) {
+    filedIdsArray.push(currentMoveFile.value.fileId);
+  } else {
+    filedIdsArray = filedIdsArray.concat(selectFileIdList.value);
+  }
+  let result = await proxy.Request({
+    url: api.changeFileFolder,
+    params: {
+      fileIds: filedIdsArray.join(","),
+      filePid: folderId,
+    },
+  });
+  if (!result) {
+    return;
+  }
+  folderSelectRef.value.close();
+  loadDataList();
 };
 
 

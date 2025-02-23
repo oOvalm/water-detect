@@ -13,6 +13,12 @@ class CustomError(Exception):
     def __str__(self):
         return f"code: {self.code}, msg: {self.msg}"
 
+class ParamError(CustomError):
+    def __init__(self, code=-1, msg=""):
+        if msg == "":
+            msg = "params error"
+        if code == -1:
+            code = 401
+        super().__init__(code, msg)
 
 InternalServerError = CustomError(500, constants.INTERNAL_ERROR)
-ParamError = CustomError(401, "params error")
