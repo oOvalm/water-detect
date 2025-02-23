@@ -1,4 +1,4 @@
-import { ElMessage } from 'element-plus'
+import {ElMessage} from 'element-plus'
 
 const showMessage = (msg, callback, type) => {
     ElMessage({
@@ -23,6 +23,9 @@ const message = {
     warning: (msg, callback) => {
         showMessage(msg, callback, "warning");
     },
+    info: (msg, callback) => {
+        showMessage(msg, callback, "info");
+    }
 }
 
 export default message;

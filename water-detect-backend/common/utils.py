@@ -1,6 +1,7 @@
 import json
 
 from captcha.models import CaptchaStore
+from rest_framework import serializers
 from rest_framework.response import Response
 
 
@@ -16,20 +17,23 @@ class BaseResponse(object):
 
     def dump(self):
         return json.dumps(self.dict)
-
+class BaseResponseSerializer(serializers.Serializer):
+    code = serializers.IntegerField()
+    msg = serializers.CharField()
+    data = serializers.JSONField()
 
 def NewSuccessResponse(data=None):
     resp = BaseResponse()
     resp.data = data
     resp.msg = "ok"
-    return Response(resp.dump())
+    return Response(BaseResponseSerializer(resp).data)
 
 
 def NewErrorResponse(code: int, msg: str):
     resp = BaseResponse()
     resp.code = code
     resp.msg = msg
-    return Response(resp.dump())
+    return Response(BaseResponseSerializer(resp).data)
 
 
 

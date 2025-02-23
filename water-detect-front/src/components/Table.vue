@@ -5,7 +5,7 @@
         :data="dataSource.list || []"
         :height="tableHeight"
         :stripe="options.stripe"
-        :border="options.border"
+        :border="true"
         header-row-class-name="table-header-row"
         highlight-current-row
         @row-click="handleRowClick"
@@ -78,6 +78,7 @@
 </template>
 <script setup>
 import {ref, computed} from "vue";
+import message from "@/utils/Message.js";
 
 const emit = defineEmits(["rowSelected", "rowClick"]);
 const props = defineProps({
@@ -95,6 +96,7 @@ const props = defineProps({
     default: {
       extHeight: 0,
       showIndex: false,
+      border: false
     },
   },
   columns: Array,

@@ -1,14 +1,16 @@
 <template>
   <el-header class="home-header">
-    <!-- 左边图标 -->aaaa
+    <!-- 左边图标 -->
     <div class="left-icon">
-      <i class="el-icon-house"></i>
+      <span class="iconfont icon-pan"></span>
+      <span class="name">xxx logo</span>
     </div>
     <!-- 右边头像及下拉框 -->
     <div class="right-avatar">
       <el-dropdown>
         <span class="el-dropdown-link">
           <img src="@/assets/qq.png" alt="Avatar" class="avatar"/>
+          {{ username }}
           <el-icon class="el-icon--right"><arrow-down/></el-icon>
         </span>
         <template #dropdown>
@@ -25,14 +27,25 @@
 
 
 <script setup>
-import {ref} from 'vue';
+import {onMounted, ref} from 'vue';
 import {ArrowDown, Avatar, CirclePlus, InfoFilled, SwitchButton} from "@element-plus/icons-vue";
 import router from "@/router/index.js";
+import httpRequest from "@/api/httpRequest.ts";
 
+const username = ref()
 const logout = () => {
   localStorage.removeItem("jwt");
   router.push("/login");
 }
+onMounted(() => {
+  httpRequest.get("account/selfInfo").then(({data}) => {
+    if (data.code !== 0) {
+      logout()
+    } else {
+      username.value = data.data.username
+    }
+  })
+})
 </script>
 
 <style scoped lang="scss">
@@ -46,8 +59,20 @@ const logout = () => {
 }
 
 .left-icon {
-  font-size: 24px;
-  color: #333;
+  display: flex;
+  align-items: center;
+
+  .icon-pan {
+    font-size: 40px;
+    color: #1296db;
+  }
+
+  .name {
+    font-weight: bold;
+    margin-left: 5px;
+    font-size: 25px;
+    color: #05a1f5;
+  }
 }
 
 .right-avatar {

@@ -235,7 +235,6 @@ const checkCodeUrl4SendMailCode = ref();
 const changeCheckCode = (type) => {
   if (type == 0) {
     httpRequest.get('/account/captcha').then(({data}) => {
-      let jsonData = JSON.parse(data)
       formData.value.captchaHashCode = jsonData.data.hashkey
       console.log(jsonData);
       checkCodeUrl.value = `/api${jsonData.data.image_url}`
@@ -262,7 +261,6 @@ const getEmailCode = () => {
       email: formData.value.email,
       type: 'register',
     }).then(({data}) => {
-      data = JSON.parse(data)
       if (data.code !== 0) {
         ElMessage.error(data.msg);
       } else {
@@ -336,7 +334,6 @@ const doSubmit = () => {
       url = "/account/resetPwd";
     }
     httpRequest.post(url, params).then(({data}) => {
-      data = JSON.parse(data)
       console.log(data)
       if (data.code != 0) {
         ElMessage.error(data.msg);

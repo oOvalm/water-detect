@@ -2,20 +2,6 @@
   <div>
     <div class="top">
       <div class="top-op">
-        <div class="btn">
-          <el-upload
-              :show-file-list="false"
-              :with-credentials="true"
-              :multiple="true"
-              :http-request="addFile"
-              :accept="fileAccept"
-          >
-            <el-button type="primary">
-              <span class="iconfont icon-upload"></span>
-              上传
-            </el-button>
-          </el-upload>
-        </div>
         <el-button type="success" @click="newFolder">
           <span class="iconfont icon-folder-add"></span>
           新建文件夹
@@ -23,7 +9,7 @@
         <el-button
             @click="delFileBatch"
             type="danger"
-            :disabled="selectFileIdList.length == 0"
+            :disabled="selectFileIdList.length === 0"
         >
           <span class="iconfont icon-del"></span>
           批量删除
@@ -31,7 +17,7 @@
         <el-button
             @click="moveFolderBatch"
             type="warning"
-            :disabled="selectFileIdList.length == 0"
+            :disabled="selectFileIdList.length === 0"
         >
           <span class="iconfont icon-move"></span>
           批量移动
@@ -40,7 +26,7 @@
           <el-input
               clearable
               placeholder="输入文件名搜索"
-              v-model="fileNameFuzzy"
+              v-model="filenameSearchText"
               @keyup.enter="search"
           >
             <template #suffix>
@@ -48,10 +34,11 @@
             </template>
           </el-input>
         </div>
-        <div class="iconfont icon-refresh" @click="loadDataList"></div>
       </div>
     </div>
-    <div class="file-list" v-if="tableData.list && tableData.list.length > 0">
+    <!-- ========================================================== -->
+
+    <div class="file-list">
       <Table
           ref="dataTableRef"
           :columns="columns"
@@ -61,40 +48,37 @@
           :initFetch="false"
           :options="tableOptions"
           @rowSelected="rowSelected"
+          :border="true"
       >
-        <template #fileName="{ index, row }">
+        <template #filename="{ index, row }">
           <div
               class="file-item"
               @mouseenter="showOp(row)"
               @mouseleave="cancelShowOp(row)"
           >
-            <template
-                v-if="(row.fileType == 3 || row.fileType == 1) && row.status == 2"
-            >
-              <icon :cover="row.fileCover" :width="32"></icon>
-            </template>
-            <template v-else>
-              <icon v-if="row.folderType == 0" :fileType="row.fileType"></icon>
-              <icon v-if="row.folderType == 1" :fileType="0"></icon>
-            </template>
-            <span class="file-name" v-if="!row.showEdit" :title="row.fileName">
-              <span @click="preview(row)">{{ row.fileName }}</span>
-              <span v-if="row.status == 0" class="transfer-status">转码中</span>
-              <span v-if="row.status == 1" class="transfer-status transfer-fail">转码失败</span>
+            <!--          <template-->
+            <!--              v-if="(row.fileType == 3 || row.fileType == 1) && row.status == 2"-->
+            <!--          >-->
+            <!--            <icon :cover="row.fileCover" :width="32"></icon>-->
+            <!--          </template>-->
+            <!--          <template v-else>-->
+            <icon :fileType="row.file_type"></icon>
+            <!--          </template>-->
+            <span class="file-name" :title="row.filename">
+              <span @click="preview(row)">{{ row.filename }}</span>
             </span>
             <div class="edit-panel" v-if="row.showEdit">
               <el-input
-                  v-model.trim="row.fileNameReal"
+                  v-model.trim="row.filenameReal"
                   ref="editNameRef"
                   :maxLength="190"
                   @keyup.enter="saveNameEdit(index)"
               >
-                <template #suffix>{{ row.fileSuffix }}</template>
               </el-input>
               <span
                   :class="[
                   'iconfont icon-right1',
-                  row.fileNameReal ? '' : 'not-allow',
+                  row.filenameReal ? '' : 'not-allow',
                 ]"
                   @click="saveNameEdit(index)"
               ></span>
@@ -104,14 +88,14 @@
               ></span>
             </div>
             <span class="op">
-              <template v-if="row.showOp && row.fileId && row.status == 2">
+              <template v-if="row.showOp && row.id">
                 <span class="iconfont icon-share1" @click="share(row)"
                 >分享</span
                 >
                 <span
                     class="iconfont icon-download"
                     @click="download(row)"
-                    v-if="row.folderType == 0"
+                    v-if="row.file_type !== 1"
                 >下载</span
                 >
                 <span class="iconfont icon-del" @click="delFile(row)"
@@ -129,150 +113,211 @@
             </span>
           </div>
         </template>
-        <template #fileSize="{ index, row }">
-          <span v-if="row.fileSize">
-            {{ Utils.size2Str(row.fileSize) }}</span
-          >
+        <template #size="{ index, row }">
+        <span v-if="row.file_type !== 1">
+          {{ Utils.size2Str(row.size) || 0 }}
+        </span>
         </template>
       </Table>
     </div>
-    <div class="no-data" v-else>
-      <div class="no-data-inner">
-        <Icon iconName="no_data" :width="120" fit="fill"></Icon>
-        <div class="tips">当前目录为空，请上传你的第一个视频</div>
-        <div class="op-list">
-          <el-upload
-              :show-file-list="false"
-              :with-credentials="true"
-              :multiple="true"
-              :http-request="addFile"
-              :accept="fileAccept"
-          >
-            <div class="op-item">
-              <Icon iconName="file" :width="60"></Icon>
-              <div>上传文件</div>
-            </div>
-          </el-upload>
-          <div class="op-item" @click="newFolder">
-            <Icon iconName="folder" :width="60"></Icon>
-            <div>新建目录</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!--预览-->
-    <Preview ref="previewRef"></Preview>
-    <!--移动-->
     <FolderSelect
         ref="folderSelectRef"
         @folderSelect="moveFolderDone"
     ></FolderSelect>
-    <!--分享-->
-    <!--    <FileShare ref="shareRef"></FileShare>-->
   </div>
 </template>
 
 <script setup>
-import {ref, reactive, getCurrentInstance, nextTick, computed, onMounted} from "vue";
-import {useRouter, useRoute} from "vue-router";
+
+import {nextTick, onMounted, ref} from "vue";
 import httpRequest from "@/api/httpRequest.ts";
-import {ElMessage, ElMessageBox} from "element-plus";
 import message from "@/utils/Message.js";
-import Icon from "@/components/Icon.vue";
 import * as Utils from "@/utils/Utils.ts";
+import Icon from "@/components/Icon.vue";
+import Table from '@/components/Table.vue'
+import {ElMessageBox} from "element-plus";
 
-const {proxy} = getCurrentInstance();
-const router = useRouter();
-const route = useRoute();
-const emit = defineEmits(["addFile"]);
-//添加文件
-const addFile = async (fileData) => {
-  emit("addFile", {file: fileData.file, filePid: currentFolder.value.fileId});
-};
-//添加文件回调
-const reload = () => {
-  loadDataList();
-};
-onMounted(() => {
-  reload()
-})
-defineExpose({
-  reload,
-});
-
-const currentFolder = ref({fileId: -1});
-
-const api = {
-  // loadDataList: "/file/getFileList",
-  rename: "/file/rename",
-  newFoloder: "/file/newFoloder",
-  getFolderInfo: "/file/getFolderInfo",
-  delFile: "/file/delFile",
-  changeFileFolder: "/file/changeFileFolder",
-  createDownloadUrl: "/file/createDownloadUrl",
-  download: "/api/file/download",
-};
-
-const fileAccept = computed(() => {
-  return "*"
-});
-
-//列表
-const columns = [
-  {
-    label: "文件名",
-    prop: "fileName",
-    scopedSlots: "fileName",
-  },
-  {
-    label: "修改时间",
-    prop: "lastUpdateTime",
-    width: 200,
-  },
-  {
-    label: "大小",
-    prop: "fileSize",
-    scopedSlots: "fileSize",
-    width: 200,
-  },
-];
-//搜索
-const search = () => {
-  loadDataList();
-};
-//列表
-const tableData = ref({
-  pageNo: 1,
-  pageSize: 20,
-});
+const currentFolder = ref({fileID: -1})
+const tableData = ref({})
+const filenameSearchText = ref();
 const tableOptions = {
   extHeight: 50,
   selectType: "checkbox",
 };
+//列表
+const columns = [
+  {
+    label: "文件名",
+    prop: "filename",
+    scopedSlots: "filename",
+  },
+  {
+    label: "修改时间",
+    prop: "update_time",
+    width: 200,
+  },
+  {
+    label: "大小",
+    prop: "size",
+    scopedSlots: "size",
+    width: 200,
+  },
+];
 
-const fileNameFuzzy = ref();
+onMounted(() => {
+  loadDataList()
+})
 
 const loadDataList = () => {
   let params = {
-    pageNo: tableData.value.pageNo,
-    pageSize: tableData.value.pageSize,
-    fileNameFuzzy: fileNameFuzzy.value,
-    filePid: currentFolder.value.fileId,
-  };
+    pageNo: tableData.value.pageNo || 1,
+    pageSize: tableData.value.pageSize || 20,
+    filePid: currentFolder.value.fileID,
+  }
   httpRequest.get("/directory/fileList", {
-    params,
+    params
   }).then(({data}) => {
-    data = JSON.parse(data);
+    console.log(data)
+    if (data.code !== 0) {
+      throw data.msg
+    }
     tableData.value = data.data
     console.log(tableData.value)
-    editing.value = false;
   }).catch((e) => {
     console.log(e);
     message.error("加载文件失败")
+  })
+}
+
+const newFolder = () => {
+  httpRequest.post("/directory/fileList", {
+    filePid: currentFolder.value.fileID
+  }).then(({data}) => {
+    if (data.code !== 0) {
+      throw data.msg;
+    } else {
+      loadDataList()
+    }
+  }).catch((e) => {
+    message.error(e)
+  })
+}
+
+//多选 批量选择
+const selectFileIdList = ref([]);
+const selectFileList = ref([]);
+const rowSelected = (rows) => {
+  selectFileList.value = rows;
+  selectFileIdList.value = [];
+  rows.forEach((item) => {
+    selectFileIdList.value.push(item.id);
   });
 };
 
-//展示操作按钮
+const moveFolderBatch = () => {
+  message.warning("todo")
+}
+const search = () => {
+  message.warning(`todo search ${filenameSearchText.value}`)
+}
+
+const editing = ref(false);
+const editNameRef = ref();
+const saveNameEdit = async (index) => {
+  const {id, file_pid, filenameReal} = tableData.value.list[index];
+  if (filenameReal === "" || filenameReal.indexOf("/") !== -1) {
+    proxy.Message.warning("文件名不能为空且不能含有斜杠");
+    return;
+  }
+  httpRequest.put("directory/fileList", {
+    type: "rename",
+    id: id,
+    filePid: file_pid,
+    newFileName: filenameReal,
+  }).then(({data}) => {
+    if (data.code !== 0) throw data.msg
+    tableData.value.list[index] = data.data;
+    editing.value = false;
+    message.success("修改成功")
+  }).catch((e) => {
+    console.log(e);
+    message.error("重命名失败")
+    editing.value = false;
+  })
+};
+
+//编辑文件名
+const editFileName = (index) => {
+  if (tableData.value.list[0].fileId === "") {
+    tableData.value.list.splice(0, 1);
+    index = index - 1;
+  }
+  tableData.value.list.forEach((element) => {
+    element.showEdit = false;
+  });
+  let currentData = tableData.value.list[index];
+  currentData.showEdit = true;
+  console.log(currentData)
+  //编辑文件
+  currentData.filenameReal = currentData.filename;
+  editing.value = true;
+  nextTick(() => {
+    editNameRef.value.focus();
+  });
+};
+
+const cancelNameEdit = (index) => {
+  const fileData = tableData.value.list[index];
+  if (fileData.id) {
+    fileData.showEdit = false;
+  } else {
+    tableData.value.list.splice(index, 1);
+  }
+  editing.value = false;
+};
+
+
+const delFile = (row) => {
+  ElMessageBox.confirm(`你确定要删除【${row.filename}】吗？删除的文件可在10天内通过回收站还原`,
+  ).then(() => {
+    httpRequest.delete("/directory/fileList", {
+      params: {
+        fileIDs: row.id,
+      }
+    }).then(({data}) => {
+      if (data.code !== 0) throw data.msg
+      message.success("删除成功")
+      loadDataList();
+    }).catch((e) => {
+      console.log(e);
+      message.error("删除失败")
+    })
+  });
+};
+//批量删除
+const delFileBatch = () => {
+  if (selectFileIdList.value.length === 0) {
+    message.error("error!")
+    return;
+  }
+  ElMessageBox.confirm(`你确定要删除这些文件吗？(共${selectFileIdList.value.length}个文件)`,
+  ).then(() => {
+    console.log(selectFileIdList.value)
+    httpRequest.delete("/directory/fileList", {
+      params: {
+        fileIDs: selectFileIdList.value.join(','),
+      }
+    }).then(({data}) => {
+      if (data.code !== 0) throw data.msg
+      loadDataList();
+    }).catch((e) => {
+      console.log(e);
+      message.error("删除失败")
+    })
+  });
+};
+
+
 const showOp = (row) => {
   tableData.value.list.forEach((element) => {
     element.showOp = false;
@@ -284,223 +329,45 @@ const cancelShowOp = (row) => {
   row.showOp = false;
 };
 
-//编辑行
-const editing = ref(false);
-const editNameRef = ref();
-//新建文件夹
-const newFolder = () => {
-  httpRequest.put("/directory/fileList", {
-    filePid: currentFolder.value.fileId,
-  }).then(({data}) => {
-    data = JSON.parse(data);
-    if (data.code !== 0) {
-      throw "创建失败"
-    }
-  }).catch((e) => {
-    console.log(e)
-    message.error("创建失败")
-  }).then(() => {
-    loadDataList()
-  })
-};
-
-const cancelNameEdit = (index) => {
-  const fileData = tableData.value.list[index];
-  if (fileData.fileId) {
-    fileData.showEdit = false;
-  } else {
-    tableData.value.list.splice(index, 1);
-  }
-  editing.value = false;
-};
-
-const saveNameEdit = async (index) => {
-  const {fileId, filePid, fileNameReal} = tableData.value.list[index];
-  if (fileNameReal == "" || fileNameReal.indexOf("/") != -1) {
-    message.warning("文件名不能为空且不能含有斜杠");
-    return;
-  }
-  let url = api.rename;
-  if (fileId == "") {
-    url = api.newFoloder;
-  }
-  let result = await proxy.Request({
-    url: url,
-    params: {
-      fileId,
-      filePid: filePid,
-      fileName: fileNameReal,
-    },
-  });
-  if (!result) {
-    return;
-  }
-  tableData.value.list[index] = result.data;
-  editing.value = false;
-};
-
-//编辑文件名
-const editFileName = (index) => {
-  if (tableData.value.list[0].fileId == "") {
-    tableData.value.list.splice(0, 1);
-    index = index - 1;
-  }
-  tableData.value.list.forEach((element) => {
-    element.showEdit = false;
-  });
-  let cureentData = tableData.value.list[index];
-  cureentData.showEdit = true;
-
-  //编辑文件
-  if (cureentData.folderType == 0) {
-    cureentData.fileNameReal = cureentData.fileName.substring(
-        0,
-        cureentData.fileName.indexOf(".")
-    );
-    cureentData.fileSuffix = cureentData.fileName.substring(
-        cureentData.fileName.indexOf(".")
-    );
-  } else {
-    cureentData.fileNameReal = cureentData.fileName;
-    cureentData.fileSuffix = "";
-  }
-  editing.value = true;
-  nextTick(() => {
-    editNameRef.value.focus();
-  });
-};
-
-//多选 批量选择
-const selectFileIdList = ref([]);
-const selectFileList = ref([]);
-const rowSelected = (rows) => {
-  selectFileList.value = rows;
-  selectFileIdList.value = [];
-  rows.forEach((item) => {
-    selectFileIdList.value.push(item.fileId);
-  });
-};
-
-//删除文件
-const delFile = (row) => {
-  proxy.Confirm(
-      `你确定要删除【${row.fileName}】吗？删除的文件可在10天内通过回收站还原`,
-      async () => {
-        let result = await httpRequest.post({
-          url: api.delFile,
-          params: {
-            fileIds: row.fileId,
-          },
-        });
-        if (!result) {
-          return;
-        }
-        loadDataList();
-      }
-  );
-};
-//批量删除
-const delFileBatch = () => {
-  if (selectFileIdList.value.length == 0) {
-    return;
-  }
-  ElMessageBox.confirm(
-      `你确定要删除这些文件吗？删除的文件可在10天内通过回收站还原`,
-      async () => {
-        let result = await proxy.Request({
-          url: api.delFile,
-          params: {
-            fileIds: selectFileIdList.value.join(","),
-          },
-        });
-        if (!result) {
-          return;
-        }
-        loadDataList();
-      }
-  );
-};
-
-//移动目录
-const folderSelectRef = ref();
-const currentMoveFile = ref({});
-const moveFolder = (data) => {
-  currentMoveFile.value = data;
-  folderSelectRef.value.showFolderDialog(data.fileId);
-};
-
-//批量移动
-const moveFolderBatch = () => {
-  currentMoveFile.value = {};
-  //批量移动如果选择的是文件夹，那么要讲文件夹也过滤
-  const excludeFileIdList = [currentFolder.value.fileId];
-  selectFileList.value.forEach((item) => {
-    if (item.folderType == 1) {
-      excludeFileIdList.push(item.fileId);
-    }
-  });
-  folderSelectRef.value.showFolderDialog(excludeFileIdList.join(","));
-};
-
-const moveFolderDone = async (folderId) => {
-  if (
-      currentMoveFile.value.filePid === folderId ||
-      currentFolder.value.fileId == folderId
-  ) {
-    message.warning("文件正在当前目录，无需移动");
-    return;
-  }
-  let filedIdsArray = [];
-  if (currentMoveFile.value.fileId) {
-    filedIdsArray.push(currentMoveFile.value.fileId);
-  } else {
-    filedIdsArray = filedIdsArray.concat(selectFileIdList.value);
-  }
-  let result = await httpRequest({
-    url: api.changeFileFolder,
-    params: {
-      fileIds: filedIdsArray.join(","),
-      filePid: folderId,
-    },
-  });
-  if (!result) {
-    return;
-  }
-  folderSelectRef.value.close();
-  loadDataList();
-};
 
 const previewRef = ref();
 const navigationRef = ref();
 const preview = (data) => {
-  if (data.folderType == 1) {
-    //openFolder(data);
-    navigationRef.value.openFolder(data);
-    return;
-  }
-  if (data.status != 2) {
-    proxy.Message.warning("文件正在转码中，无法预览");
-    return;
-  }
-  previewRef.value.showPreview(data, 0);
+  message.warning("todo")
+  // if (data.folderType == 1) {
+  //   openFolder(data);
+  // navigationRef.value.openFolder(data);
+  // return;
+  // }
+  // if (data.status != 2) {
+  //   proxy.Message.warning("文件正在转码中，无法预览");
+  //   return;
+  // }
+  // previewRef.value.showPreview(data, 0);
+};
+//目录
+const navChange = (data) => {
+  message.warning(`todo navChage ${data}`)
+  // const {curFolder, categoryId} = data;
+  // currentFolder.value = curFolder;
+  // showLoading.value = true;
+  // category.value = categoryId;
+  // loadDataList();
 };
 
 //下载文件
 const download = async (row) => {
-  let result = await proxy.Request({
-    url: api.createDownloadUrl + "/" + row.fileId,
-  });
-  if (!result) {
-    return;
-  }
-  window.location.href = api.download + "/" + result.data;
+  message.warning("todo download")
+  // let result = await proxy.Request({
+  //   url: api.createDownloadUrl + "/" + row.fileId,
+  // });
+  // if (!result) {
+  //   return;
+  // }
+  // window.location.href = api.download + "/" + result.data;
 };
 
-//分享
-const shareRef = ref();
-const share = (row) => {
-  shareRef.value.show(row);
-};
+
 </script>
 
 <style lang="scss" scoped>
