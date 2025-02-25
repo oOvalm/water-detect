@@ -60,7 +60,10 @@ class FileListView(APIView):
             logger.error(form.errors)
             raise ParamError()
         parentID = form.cleaned_data.get('filePid')
-        files = FileInfo.objects.filter(file_pid=parentID)
+        searchFilename = form.cleaned_data.get('searchFilename')
+        files = FileInfo.objects.filter(file_pid=parentID, user_id=request.user.id)
+        if searchFilename is not None and searchFilename.strip() != '':
+            files = files.filter(filename__contains=searchFilename)
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(files, request)
         if page is not None:
@@ -114,7 +117,7 @@ class FileListView(APIView):
         if not file_ids:
             raise ParamError("No valid file IDs provided")
 
-        deleted_count, _ = FileInfo.objects.filter(id__in=file_ids).delete()
+        deleted_count, _ = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id).delete()
         return NewSuccessResponse({"count", deleted_count})
 
 
@@ -125,5 +128,17 @@ class FolderListView(APIView):
         excludeFileIDs = excludeFileIDs.split(',') if excludeFileIDs else None
         if filePid is None:
             raise ParamError("Missing filePid parameter")
-        folders = FileInfo.objects.filter(file_pid=filePid).exclude(id__in=excludeFileIDs)
-        return NewSuccessResponse(FileInfoSerializer(folders).data)
+        folders = FileInfo.objects.filter(file_pid=filePid, user_id=request.user.id)
+        if excludeFileIDs is not None:
+            folders = folders.exclude(id__in=excludeFileIDs)
+        return NewSuccessResponse(FileInfoSerializer(folders, many=True).data)
+
+    def post(self, request):
+        # 传入 newFolderPid和moveFileIDs, 将FileIDs移动到newFolderPid下
+        body = json.loads(request.body)
+        newFolderPid = body.get('newFolderPid')
+        moveFileIDs = body.get('moveFileIDs')
+        if not newFolderPid or not moveFileIDs:
+            raise ParamError("Missing newFolderPid or moveFileIDs parameter")
+        rows = FileInfo.objects.filter(id__in=moveFileIDs, user_id=request.user.id).update(file_pid=newFolderPid)
+        return NewSuccessResponse({"count": rows})

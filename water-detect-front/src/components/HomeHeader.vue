@@ -39,11 +39,14 @@ const logout = () => {
 }
 onMounted(() => {
   httpRequest.get("account/selfInfo").then(({data}) => {
-    if (data.code !== 0) {
+    if (data.code == null || data.code !== 0) {
       logout()
     } else {
       username.value = data.data.username
     }
+  }).catch((e) => {
+    console.log(e);
+    logout();
   })
 })
 </script>

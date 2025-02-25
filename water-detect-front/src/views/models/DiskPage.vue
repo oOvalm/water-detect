@@ -34,7 +34,13 @@
             </template>
           </el-input>
         </div>
+        <div class="iconfont icon-refresh" @click="loadDataList"></div>
       </div>
+      <!--导航-->
+      <Navigation
+          ref="navigationRef"
+          @navChange="navChange"
+          :watchPath="false"></Navigation>
     </div>
     <!-- ========================================================== -->
 
@@ -87,7 +93,7 @@
                   @click="cancelNameEdit(index)"
               ></span>
             </div>
-            <span class="op">
+            <span class="op" :style="{width: row.showOp && row.id?'280px':'0px'}">
               <template v-if="row.showOp && row.id">
                 <span class="iconfont icon-share1" @click="share(row)"
                 >分享</span
@@ -137,6 +143,7 @@ import Icon from "@/components/Icon.vue";
 import Table from '@/components/Table.vue'
 import FolderSelect from '@/components/FolderSelect.vue'
 import {ElMessageBox} from "element-plus";
+import Navigation from "@/components/Navigation.vue";
 
 const currentFolder = ref({fileID: -1})
 const tableData = ref({})
@@ -174,7 +181,9 @@ const loadDataList = () => {
     pageNo: tableData.value.pageNo || 1,
     pageSize: tableData.value.pageSize || 20,
     filePid: currentFolder.value.fileID,
+    searchFilename: filenameSearchText.value
   }
+  console.log(params)
   httpRequest.get("/directory/fileList", {
     params
   }).then(({data}) => {
@@ -215,7 +224,7 @@ const rowSelected = (rows) => {
   });
 };
 const search = () => {
-  message.warning(`todo search ${filenameSearchText.value}`)
+  loadDataList();
 }
 
 const editing = ref(false);
@@ -320,48 +329,48 @@ const folderSelectRef = ref();
 const currentMoveFile = ref({});
 const moveFolder = (data) => {
   currentMoveFile.value = data;
-  folderSelectRef.value.showFolderDialog(data.id);
+  folderSelectRef.value.showFolderDialog([data.id]);
 };
 
 //批量移动
 const moveFolderBatch = () => {
   currentMoveFile.value = {};
   //批量移动如果选择的是文件夹，那么要讲文件夹也过滤
-  const excludeFileIdList = [currentFolder.value.fileId];
+  const excludeFileIdList = [currentFolder.value.id];
   selectFileList.value.forEach((item) => {
-    if (item.folderType == 1) {
-      excludeFileIdList.push(item.fileId);
+    if (item.file_type === 1) {
+      excludeFileIdList.push(item.id);
     }
   });
-  folderSelectRef.value.showFolderDialog(excludeFileIdList.join(","));
+  folderSelectRef.value.showFolderDialog(excludeFileIdList);
 };
 
 const moveFolderDone = async (folderId) => {
   if (
-      currentMoveFile.value.file_id === folderId ||
+      currentMoveFile.value.id === folderId ||
       currentFolder.value.id === folderId
   ) {
-    proxy.Message.warning("文件正在当前目录，无需移动");
+    message.warning("文件正在当前目录，无需移动");
     return;
   }
   let filedIdsArray = [];
-  if (currentMoveFile.value.fileId) {
-    filedIdsArray.push(currentMoveFile.value.fileId);
+  if (currentMoveFile.value.id) {
+    filedIdsArray.push(currentMoveFile.value.id);
   } else {
     filedIdsArray = filedIdsArray.concat(selectFileIdList.value);
   }
-  let result = await proxy.Request({
-    url: api.changeFileFolder,
-    params: {
-      fileIds: filedIdsArray.join(","),
-      filePid: folderId,
-    },
-  });
-  if (!result) {
-    return;
-  }
-  folderSelectRef.value.close();
-  loadDataList();
+  httpRequest.post("/directory/folderList", {
+    newFolderPid: folderId,
+    moveFileIDs: filedIdsArray
+  }).then(({data}) => {
+    if (data.code !== 0) throw data.msg;
+    message.success("操作成功");
+    folderSelectRef.value.close();
+    loadDataList();
+  }).catch((e) => {
+    message.error("移动失败")
+    console.log(e)
+  })
 };
 
 
@@ -380,12 +389,11 @@ const cancelShowOp = (row) => {
 const previewRef = ref();
 const navigationRef = ref();
 const preview = (data) => {
-  message.warning("todo")
-  // if (data.folderType == 1) {
-  //   openFolder(data);
-  // navigationRef.value.openFolder(data);
-  // return;
-  // }
+  if (data.file_type === 1) {
+    navigationRef.value.openFolder(data);
+    return;
+  }
+  message.error("文件预览 todo"); // todo
   // if (data.status != 2) {
   //   proxy.Message.warning("文件正在转码中，无法预览");
   //   return;
@@ -394,12 +402,10 @@ const preview = (data) => {
 };
 //目录
 const navChange = (data) => {
-  message.warning(`todo navChage ${data}`)
-  // const {curFolder, categoryId} = data;
-  // currentFolder.value = curFolder;
+  const {curFolder, categoryId} = data;
+  currentFolder.value = {fileID: curFolder.id};
   // showLoading.value = true;
-  // category.value = categoryId;
-  // loadDataList();
+  loadDataList();
 };
 
 //下载文件
@@ -418,5 +424,5 @@ const download = async (row) => {
 </script>
 
 <style lang="scss" scoped>
-@import "@/assets/file.list.scss";
+@use "@/assets/file.list.scss";
 </style>

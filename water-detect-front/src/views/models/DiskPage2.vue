@@ -480,7 +480,7 @@ const previewRef = ref();
 const navigationRef = ref();
 const preview = (data) => {
   if (data.folderType == 1) {
-    //openFolder(data);
+    openFolder(data);
     navigationRef.value.openFolder(data);
     return;
   }

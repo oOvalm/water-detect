@@ -62,10 +62,12 @@ const folderList = ref([]);
 const currentFolder = ref({});
 
 const loadFolder = async () => {
+  console.log(filePid.value);
+  console.log(selectedFileIDs.value.length)
   httpRequest.get("/directory/folderList", {
     params: {
       filePid: filePid.value,
-      excludeFileIDs: selectedFileIDs.value.join(",")
+      excludeFileIDs: selectedFileIDs.value.length > 0 ? selectedFileIDs.value.join(",") : null,
     }
   }).then(({data}) => {
     if (data.code !== 0) throw data.msg;
@@ -109,7 +111,7 @@ const folderSelect = () => {
 const navChange = (data) => {
   const {curFolder} = data;
   currentFolder.value = curFolder;
-  filePid.value = curFolder.fileId;
+  filePid.value = curFolder.id;
   loadFolder();
 };
 </script>

@@ -29,6 +29,7 @@
 <script setup>
 import {ref, reactive, getCurrentInstance, watch} from "vue";
 import {useRouter, useRoute} from "vue-router";
+import message from "@/utils/Message.js";
 
 const {proxy} = getCurrentInstance();
 const router = useRouter();
@@ -59,12 +60,12 @@ const category = ref();
 //目录
 const folderList = ref([]);
 //当前目录
-const currentFolder = ref({fileId: "0"});
+const currentFolder = ref({id: "-1"});
 
 //初始化
 const init = () => {
   folderList.value = [];
-  currentFolder.value = {fileId: "0"};
+  currentFolder.value = {id: "-1"};
   doCallback();
 };
 
@@ -86,7 +87,7 @@ defineExpose({openFolder, init});
 const backParent = () => {
   let currentIndex = null;
   for (let i = 0; i < folderList.value.length; i++) {
-    if (folderList.value[i].fileId == currentFolder.value.fileId) {
+    if (folderList.value[i].id == currentFolder.value.id) {
       currentIndex = i;
       break;
     }
@@ -98,7 +99,7 @@ const backParent = () => {
 const setCurrentFolder = (index) => {
   if (index == -1) {
     //返回全部
-    currentFolder.value = {fileId: "0"};
+    currentFolder.value = {id: "-1"};
     folderList.value = [];
   } else {
     currentFolder.value = folderList.value[index];
@@ -115,7 +116,7 @@ const setPath = () => {
   }
   let pathArray = [];
   folderList.value.forEach((item) => {
-    pathArray.push(item.fileId);
+    pathArray.push(item.id);
   });
   router.push({
     path: route.path,
@@ -130,6 +131,7 @@ const setPath = () => {
 
 //获取当前路径的目录
 const getNavigationFolder = async (path) => {
+  message.error("getNavigationFolder not modify") // todo
   let url = api.getFolderInfo;
   if (props.shareId) {
     url = api.getFolderInfo4Share;
@@ -184,7 +186,7 @@ watch(
         //设置当前目录
         let pathArray = path.split("/");
         currentFolder.value = {
-          fileId: pathArray[pathArray.length - 1],
+          id: pathArray[pathArray.length - 1],
         };
         doCallback();
       }

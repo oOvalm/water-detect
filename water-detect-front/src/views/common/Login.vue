@@ -235,9 +235,9 @@ const checkCodeUrl4SendMailCode = ref();
 const changeCheckCode = (type) => {
   if (type == 0) {
     httpRequest.get('/account/captcha').then(({data}) => {
-      formData.value.captchaHashCode = jsonData.data.hashkey
-      console.log(jsonData);
-      checkCodeUrl.value = `/api${jsonData.data.image_url}`
+      formData.value.captchaHashCode = data.data.hashkey
+      console.log(data);
+      checkCodeUrl.value = `/api${data.data.image_url}`
     })
     // checkCodeUrl.value =
     //     api.checkCode + "?type=" + type + "&time=" + new Date().getTime();

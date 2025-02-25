@@ -9,3 +9,4 @@ class GetFileListForm(forms.Form):
     pageSize = forms.IntegerField(min_value=0, required=False)
     fileNameFuzzy = forms.CharField(max_length=255, required=False)
     filePid = forms.IntegerField(required=True)
+    searchFilename = forms.CharField(required=False)
