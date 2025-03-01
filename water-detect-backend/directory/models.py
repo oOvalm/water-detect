@@ -9,14 +9,15 @@ import account.models
 
 
 class FileInfoManager(models.Manager):
-    def createVideo(self, file:File, fileID: str, user: account.models.User):
+    def createVideo(self, file_pid: int, filename: str, fileSize: int, fileID: str, user: account.models.User):
         fileinfo = FileInfo(
-            size = file.size,
-            file_path='/',
+            size = fileSize,
+            file_pid = file_pid,
             folder_type=1,
-            file_type=2,
-            filename=file.name,
+            file_type=3,
+            filename=filename,
             user_id=user.id,
+            file_uid = fileID,
             # thumbnail=// todo
         )
         fileinfo.save()
@@ -40,12 +41,32 @@ class FileInfoManager(models.Manager):
                             file_type=1)
         fileinfo.save()
         return fileinfo
+    def getFilePath(self, fileID: int):
+        if fileID == -1:
+            return ""
+        file = super().get(id=fileID)
+        return file.file_path
+
+    def autoRename(self, filePID: int, filename: str, userID: int):
+        cnt = super().filter(file_pid=filePID, filename=filename, user_id=userID).count()
+        if cnt == 0:
+            return filename
+        id = 1
+        parts = filename.rsplit('.', 1)
+        prefix, suffix = parts[0], parts[1]
+        while cnt > 0:
+            # 按照最后一个点分割
+            filename = f"{prefix}({id}).{suffix}"
+            cnt = super().filter(file_pid=filePID, filename=filename, user_id=userID).count()
+            id += 1
+        return filename
 
 
 
 # Create your models here.
 class FileInfo(models.Model):
     file_pid = models.IntegerField(default=-1, db_comment='父目录id')
+    file_uid = models.CharField(null=True, max_length=4096, db_comment='文件唯一标识')
     size = models.BigIntegerField(default=0, db_comment='文件大小')
     file_path = models.CharField(default='', max_length=4096, db_comment='文件路径')
     file_type = models.SmallIntegerField(default=0, db_comment='1:目录 2:图片 3:视频')
@@ -69,3 +90,8 @@ class VideoType(Enum):
     Raw = 1
     Analysed = 2
 
+
+class FileType(Enum):
+    Folder = 1
+    Image = 2
+    Video = 3

@@ -2,6 +2,20 @@
   <div>
     <div class="top">
       <div class="top-op">
+        <div class="btn">
+          <el-upload
+              :show-file-list="false"
+              :with-credentials="true"
+              :multiple="true"
+              :http-request="addFile"
+              accept=".mp4"
+          >
+            <el-button type="primary">
+              <span class="iconfont icon-upload"></span>
+              上传
+            </el-button>
+          </el-upload>
+        </div>
         <el-button type="success" @click="newFolder">
           <span class="iconfont icon-folder-add"></span>
           新建文件夹
@@ -62,14 +76,14 @@
               @mouseenter="showOp(row)"
               @mouseleave="cancelShowOp(row)"
           >
-            <!--          <template-->
-            <!--              v-if="(row.fileType == 3 || row.fileType == 1) && row.status == 2"-->
-            <!--          >-->
-            <!--            <icon :cover="row.fileCover" :width="32"></icon>-->
-            <!--          </template>-->
-            <!--          <template v-else>-->
-            <icon :fileType="row.file_type"></icon>
-            <!--          </template>-->
+            <template
+                v-if="(row.file_type === 2 || row.file_type === 3)"
+            >
+              <icon :cover="row.id" :width="32"></icon>
+            </template>
+            <template v-else>
+              <icon :fileType="row.file_type"></icon>
+            </template>
             <span class="file-name" :title="row.filename">
               <span @click="preview(row)">{{ row.filename }}</span>
             </span>
@@ -144,6 +158,20 @@ import Table from '@/components/Table.vue'
 import FolderSelect from '@/components/FolderSelect.vue'
 import {ElMessageBox} from "element-plus";
 import Navigation from "@/components/Navigation.vue";
+
+const emit = defineEmits(["addFile"]);
+const showLoading = ref(false)
+const addFile = async (fileData) => {
+  console.log("====", currentFolder)
+  emit("addFile", {file: fileData.file, filePid: currentFolder.value.fileID});
+};
+const reload = () => {
+  showLoading.value = false;
+  loadDataList();
+};
+defineExpose({
+  reload,
+});
 
 const currentFolder = ref({fileID: -1})
 const tableData = ref({})

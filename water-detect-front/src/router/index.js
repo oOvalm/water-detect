@@ -18,8 +18,8 @@ const router = createRouter({
                 },
                 {
                     path: 'analyse',
-                    name: '水域分析视图',
-                    component: () => import('@/views/models/AnalysePage.vue')
+                    name: '在线分析',
+                    component: () => import('@/views/models/OnlineAnalyse.vue')
                 },
                 {
                     path: 'disk',

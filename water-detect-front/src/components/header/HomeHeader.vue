@@ -7,6 +7,25 @@
     </div>
     <!-- 右边头像及下拉框 -->
     <div class="right-avatar">
+      <el-popover
+          :width="800"
+          trigger="click"
+          :visible="showUploader"
+          :offset="20"
+          transition="none"
+          :hide-after="0"
+          :popper-style="{ padding: '0px' }"
+      >
+        <template #reference>
+          <span class="iconfont icon-transfer" @click="()=>{emit('changeUploader')}"></span>
+        </template>
+        <template #default>
+          <Uploader
+              ref="uploaderRef"
+              @uploadCallback="uploadCallbackHandler"
+          ></Uploader>
+        </template>
+      </el-popover>
       <el-dropdown>
         <span class="el-dropdown-link">
           <img src="@/assets/qq.png" alt="Avatar" class="avatar"/>
@@ -27,10 +46,27 @@
 
 
 <script setup>
-import {onMounted, ref} from 'vue';
+import {nextTick, onMounted, ref} from 'vue';
 import {ArrowDown, Avatar, CirclePlus, InfoFilled, SwitchButton} from "@element-plus/icons-vue";
 import router from "@/router/index.js";
 import httpRequest from "@/api/httpRequest.ts";
+import Uploader from "@/components/header/Uploader.vue";
+
+const emit = defineEmits(['uploadCallback', 'changeUploader']);
+const props = defineProps({
+  showUploader: {
+    type: Boolean,
+    default: false,
+  },
+})
+const uploadCallbackHandler = () => {
+  emit("uploadCallback");
+}
+const uploaderRef = ref();
+const addFile = (file, filePid) => {
+  uploaderRef.value.addFile(file, filePid);
+};
+defineExpose({addFile});
 
 const username = ref()
 const logout = () => {

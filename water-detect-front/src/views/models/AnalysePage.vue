@@ -12,7 +12,7 @@
         :show-file-list="false"
     >
       <template #trigger>
-        <el-button type="primary">选择 MP4 文件</el-button>
+        <el-button type="primary">上传 MP4 文件</el-button>
       </template>
       <template #default>
         <el-button style="margin-left:10px" type="danger" @click="clearList">清空列表</el-button>
@@ -28,18 +28,55 @@
         </el-table-column>
         <el-table-column prop="name" label="文件名"></el-table-column>
         <el-table-column prop="duration" label="时长">
-          <template #default="{ row }">
-            {{ formatDuration(row.duration) }}
+          <template #default="{ item }">
+            <div class="op-btn">
+            <span v-if="item.status === STATUS.uploading.value">
+              <icon
+                  :width="28"
+                  class="btn-item"
+                  iconName="upload"
+                  v-if="item.pause"
+                  title="上传"
+                  @click="startUpload(item.uid)"
+              ></icon>
+              <icon
+                  :width="28"
+                  class="btn-item"
+                  iconName="pause"
+                  title="暂停"
+                  @click="pauseUpload(item.uid)"
+                  v-else
+              ></icon>
+            </span>
+              <icon
+                  :width="28"
+                  class="del btn-item"
+                  iconName="del"
+                  title="删除"
+                  v-if="
+                item.status !== STATUS.init.value &&
+                item.status !== STATUS.upload_finish.value &&
+                item.status !== STATUS.upload_seconds.value
+              "
+                  @click="delUpload(item.uid, index)"
+              ></icon>
+              <icon
+                  :width="28"
+                  class="clean btn-item"
+                  iconName="clean"
+                  title="清除"
+                  v-if="
+                item.status === STATUS.upload_finish.value ||
+                item.status === STATUS.upload_seconds.value
+              "
+                  @click="delUpload(item.uid, index)"
+              ></icon>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="size" label="文件大小">
           <template #default="{ row }">
             {{ size2Str(row.size) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作">
-          <template #default="{ row }">
-            <el-button type="danger" size="small" @click="removeFile(row)">取消上传</el-button>
           </template>
         </el-table-column>
         <el-table-column label="上传进度">
@@ -49,7 +86,6 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-button type="primary" @click="uploadFiles">确定上传</el-button>
     </div>
   </div>
 </template>
@@ -62,10 +98,50 @@ import httpRequest from "@/api/httpRequest.ts";
 import router from "@/router/index.js";
 import {Exception} from "sass";
 import message from "@/utils/Message.js";
+import Icon from "@/components/Icon.vue";
 
 const uploadRef = ref(null);
 const fileList = ref([]);
 const uploadProgress = ref(0);
+
+const STATUS = {
+  emptyfile: {
+    value: "emptyfile",
+    desc: "文件为空",
+    color: "#F75000",
+    icon: "close",
+  },
+  fail: {
+    value: "fail",
+    desc: "上传失败",
+    color: "#F75000",
+    icon: "close",
+  },
+  init: {
+    value: "init",
+    desc: "解析中",
+    color: "#e6a23c",
+    icon: "clock",
+  },
+  uploading: {
+    value: "uploading",
+    desc: "上传中",
+    color: "#409eff",
+    icon: "upload",
+  },
+  upload_finish: {
+    value: "upload_finish",
+    desc: "上传完成",
+    color: "#67c23a",
+    icon: "ok",
+  },
+  upload_seconds: {
+    value: "upload_seconds",
+    desc: "秒传",
+    color: "#67c23a",
+    icon: "ok",
+  },
+};
 
 // 上传前的钩子函数
 const beforeUpload = (file) => {
@@ -79,9 +155,14 @@ const handleFileChange = async (file, newFileList) => {
     const duration = await getVideoDuration(fileItem.raw);
     const thumbnail = await getVideoThumbnail(fileItem.raw);
     newFiles.push({
-      ...fileItem,
+      file: fileItem,
       duration,
       thumbnail,
+      uid: fileItem.uid,
+      pause: false,
+      status: STATUS.uploading.value,
+      chunkIndex: 0,
+      filePid
     });
   }
   fileList.value = newFiles;

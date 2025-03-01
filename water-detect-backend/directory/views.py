@@ -2,16 +2,19 @@ import json
 import logging
 import os
 
+from django.db import transaction
+from django.http import FileResponse
 from django.shortcuts import render
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common import constants
+from common import constants, ScaleFilter
+from common.constants import UploadFileStatus
 from common.customError import InternalServerError, ParamError
 from common.utils import NewSuccessResponse, NewErrorResponse
 from directory.forms import GetFileListForm
-from directory.models import VideoType, FileInfo
+from directory.models import VideoType, FileInfo, FileType
 from directory.serializers import FileInfoSerializer
 from directory.service import fileManager
 from waterDetect import settings
@@ -31,13 +34,64 @@ class VideoView(APIView):
             return NewErrorResponse(400, "not file uploaded")
 
     def get(self, request):
-        id = request.GET.get('id')
-        video = FileInfo.objects.get(id=id)
-        videoFile = fileManager.getVideo(video.fileUID)
+        uid = request.GET.get('uid')
+        video = FileInfo.objects.get(file_uid=uid, user_id=request.user.id)
+        videoFile = fileManager.getVideo(video.file_uid)
         response = Response(videoFile, content_type='directory/mp4')
         response['Content-Disposition'] = f'attachment; filename={video.filename}'
         return response
 
+
+class VideoV2View(APIView):
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get('file')
+        file_name = request.data.get('fileName')
+        file_md5 = request.data.get('fileMd5')
+        chunk_index = request.data.get('chunkIndex')
+        chunks = request.data.get('chunks')
+        file_id = request.data.get('fileId')
+        file_pid = request.data.get('filePid')
+
+        if not all([file, file_name, file_md5, chunk_index, chunks, file_pid]):
+            return NewErrorResponse(400, "Missing required fields")
+
+        try:
+            chunk_index = int(chunk_index)
+            chunks = int(chunks)
+            file_pid = int(file_pid)
+        except ValueError:
+            return NewErrorResponse(400, "chunkIndex and chunks must be integers")
+
+        file_id, fileSize, done = fileManager.uploadVideoChunk(
+            file=file,
+            chunk_index=chunk_index,
+            chunks=chunks,
+            file_id=file_id,
+        )
+        status = UploadFileStatus.uploading.value
+        if done:
+            parentFile_path = FileInfo.objects.getFilePath(file_pid)
+            file_name = FileInfo.objects.autoRename(file_pid, file_name, request.user.id)
+
+            fileInfo = FileInfo.objects.create(
+                file_pid=file_pid,
+                file_uid=file_id,
+                size=fileSize,
+                file_path=parentFile_path + '/' + file_name,
+                file_type=FileType.Video.value,
+                filename=file_name,
+                user_id=request.user.id,
+            )
+            status = UploadFileStatus.upload_finish.value
+
+
+        # uploaded_file.save()
+
+        # serializer = UploadedFileSerializer(uploaded_file)
+        return NewSuccessResponse({
+            "fileId": file_id,
+            "status": status,
+        })
 
 class FilePagination(PageNumberPagination):
     page_size_query_param = 'pageSize'
@@ -116,9 +170,11 @@ class FileListView(APIView):
         file_ids = [int(id) for id in file_ids_str.split(',') if id.strip().isdigit()]
         if not file_ids:
             raise ParamError("No valid file IDs provided")
-
-        deleted_count, _ = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id).delete()
-        return NewSuccessResponse({"count", deleted_count})
+        files = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id)
+        deleted_count, _ = files.delete()
+        for file in files:
+            fileManager.DeleteFile(file.file_uid)
+        return NewSuccessResponse({"count": deleted_count})
 
 
 class FolderListView(APIView):
@@ -142,3 +198,13 @@ class FolderListView(APIView):
             raise ParamError("Missing newFolderPid or moveFileIDs parameter")
         rows = FileInfo.objects.filter(id__in=moveFileIDs, user_id=request.user.id).update(file_pid=newFolderPid)
         return NewSuccessResponse({"count": rows})
+
+class ThumbnailView(APIView):
+    def get(self, request):
+        fileID = request.GET.get('fileID')
+        if fileID is None:
+            raise ParamError("Missing fileID parameter")
+        file = FileInfo.objects.get(id=fileID)
+        file_path = fileManager.getThumbnailPath(file.file_uid)
+        thumbnail = open(file_path, 'rb')
+        return FileResponse(thumbnail, content_type='image/jpeg')

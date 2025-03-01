@@ -291,11 +291,11 @@ const resetForm = () => {
     formData.value = {};
 
     //登录
-    if (opType.value == 1) {
+    if (opType.value === 1) {
       const cookieLoginInfo = localStorage.getItem("loginInfo");
       if (cookieLoginInfo) {
         const info = JSON.parse(cookieLoginInfo)
-        if (info) formData.value = cookieLoginInfo;
+        if (info) formData.value = info;
       }
     }
   });

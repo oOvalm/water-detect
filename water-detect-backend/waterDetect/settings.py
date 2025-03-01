@@ -190,6 +190,8 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
 # 媒体文件保存的根目录
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join("D:\\coding\\graduation-design\\water-detect\\", 'media')
 # 媒体文件的 URL 前缀
-MEDIA_URL = '/media/'
+MEDIA_URL = 'D:/coding/graduation-design/water-detect/media/'
+
+FFMPEG_PATH = r'D:\Program Files\ffmpeg-7.1-full_build\bin\ffmpeg.exe'

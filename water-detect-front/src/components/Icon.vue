@@ -45,14 +45,15 @@ const fileTypeMap = {
 
 const getImage = () => {
   if (props.cover) {
-    return proxy.globalInfo.imageUrl + props.cover;
+    console.log('=-==-=', props.cover);
+    return '/api/directory/thumbnail?fileID=' + props.cover;
   }
   let icon = "unknow_icon";
   if (props.iconName) {
     icon = props.iconName;
   } else {
     const iconMap = fileTypeMap[props.fileType];
-    if (iconMap != undefined) {
+    if (iconMap !== undefined) {
       icon = iconMap["icon"];
     }
   }
