@@ -1,9 +1,12 @@
 import json
 import logging
 import os
+import uuid
 
+import redis
+from django.core.cache import cache
 from django.db import transaction
-from django.http import FileResponse
+from django.http import FileResponse, StreamingHttpResponse
 from django.shortcuts import render
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -208,3 +211,45 @@ class ThumbnailView(APIView):
         file_path = fileManager.getThumbnailPath(file.file_uid)
         thumbnail = open(file_path, 'rb')
         return FileResponse(thumbnail, content_type='image/jpeg')
+
+
+
+class GetFileView(APIView):
+    def get(self, request, fileID):
+        path = ""
+        if fileID[-3:] == ".ts":
+            # fileID根据下划线分隔
+            fileUID = fileID.split('_')[0]
+            path = fileManager.GetTSPath(fileUID, fileID)
+        else:
+            fileInfo = FileInfo.objects.get(id=fileID)
+            if fileInfo.file_type == FileType.Video.value:
+                path = fileManager.GetM3U8Path(fileInfo.file_uid)
+            else:
+                return NewErrorResponse("todo file type")
+        if path == "":
+            raise InternalServerError
+        file = open(path, 'rb')
+        return FileResponse(file)
+
+class DownloadFileView(APIView):
+    def get(self, request, fileID):
+        if request.path.split('/')[-2] == "createDownload":
+            fileInfo = FileInfo.objects.get(id=fileID)
+            if fileInfo.file_type == FileType.Folder.value:
+                return NewErrorResponse(400, "invalid file id")
+            code = "download_" + uuid.uuid4().__str__()
+            cache.set(code, fileID, constants.HOUR)
+            return NewSuccessResponse({"code": code})
+        elif request.path.split('/')[-2] == "download":
+            fileID = cache.get(fileID)
+            if fileID is None:
+                return NewErrorResponse(400, "invalid code")
+            fileInfo = FileInfo.objects.get(id=fileID)
+            path = fileManager.GetFilePath(fileInfo.file_uid, fileInfo.file_type)
+            file = open(path, 'rb')
+            response = StreamingHttpResponse(file)
+            response['Content-Type'] = 'application/octet-stream'
+            response['Content-Disposition'] = f'attachment; filename={fileInfo.filename}'
+            return response
+

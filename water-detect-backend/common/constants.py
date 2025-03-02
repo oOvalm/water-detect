@@ -1,6 +1,10 @@
 from enum import Enum
 
 MINUTE = 60
+HOUR = MINUTE * 60
+DAY = HOUR * 24
+MONTH = DAY * 30
+YEAR = DAY * 365
 
 INTERNAL_ERROR = "internal server error"
 

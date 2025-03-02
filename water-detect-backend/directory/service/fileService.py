@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 from common import ScaleFilter, constants
 from common.customError import ParamError, InternalServerError
+from directory.models import FileType
 from waterDetect import settings
 
 
@@ -100,10 +101,6 @@ class LocalFileService(fileServiceABC):
             print(f"Video file with ID {fileID} not found.")
         return None
 
-    def getThumbnailPath(self, fileUID):
-        upload_dir = os.path.join(settings.MEDIA_ROOT, 'thumbnail')
-        file_path = os.path.join(upload_dir, f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}")
-        return file_path
 
     def DeleteFile(self, fileUID):
         upload_dir = os.path.join(settings.MEDIA_ROOT, 'videos')
@@ -122,3 +119,31 @@ class LocalFileService(fileServiceABC):
         if not os.path.exists(tsFolder):
             os.makedirs(tsFolder)
         ScaleFilter.cut_files(file_path, tsFolder, fileUID)
+
+    def GetM3U8Path(self, fileUID):
+        return self._getFilePath(fileUID, "m3u8")
+    def GetTSPath(self, fileUID, tsName):
+        return self._getFilePath(fileUID, "ts", tsName=tsName)
+    def getThumbnailPath(self, fileUID):
+        return self._getFilePath(fileUID, "thumbnail")
+    def GetFilePath(self, fileUID, fileType: FileType):
+        if fileType == FileType.Video.value:
+            return self._getFilePath(fileUID, "video")
+        elif fileType == FileType.Image.value:
+            return self._getFilePath(fileUID, "image")
+        else:
+            raise ValueError(f"Invalid file type: {fileType}")
+    def _getFilePath(self, fileUID: str, fileType: str, *args, **kwargs):
+        tsName = kwargs.get('tsName')
+        if fileType == "video":
+            return os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileUID}.mp4")
+        elif fileType == "ts":
+            return os.path.join(settings.MEDIA_ROOT, 'cuts', fileUID, tsName)
+        elif fileType == "m3u8":
+            return os.path.join(settings.MEDIA_ROOT, 'cuts', fileUID, 'index.m3u8')
+        elif fileType == "thumbnail":
+            return os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}")
+        elif fileType == "image":
+            raise ParamError("todo!!")
+        else:
+            raise ParamError("todo!!")

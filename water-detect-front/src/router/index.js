@@ -33,7 +33,12 @@ const router = createRouter({
             path: '/login',
             name: '登录',
             component: () => import("@/views/common/Login.vue")
-        },/*
+        },
+        {
+            path: '/test',
+            name: 'test',
+            component: () => import('@/views/models/OnlineAnalyse.vue')
+        }/*
     {
       path: "/",
       component: () => import("@/views/Framework.vue"),
