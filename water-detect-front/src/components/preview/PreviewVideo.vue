@@ -4,8 +4,10 @@
 
 <script setup>
 import DPlayer from "dplayer";
-import { nextTick, onMounted, ref, getCurrentInstance } from "vue";
-const { proxy } = getCurrentInstance();
+import {nextTick, onMounted, ref, getCurrentInstance} from "vue";
+import Hls from "hls.js";
+
+const {proxy} = getCurrentInstance();
 
 const props = defineProps({
   url: {
@@ -46,8 +48,10 @@ onMounted(() => {
 <style lang="scss" scoped>
 #player {
   width: 100%;
+
   :deep .dplayer-video-wrap {
     text-align: center;
+
     .dplayer-video {
       margin: 0px auto;
       max-height: calc(100vh - 41px);

@@ -144,6 +144,7 @@
         ref="folderSelectRef"
         @folderSelect="moveFolderDone"
     ></FolderSelect>
+    <Preview ref="previewRef"></Preview>
   </div>
 </template>
 
@@ -158,6 +159,7 @@ import Table from '@/components/Table.vue'
 import FolderSelect from '@/components/FolderSelect.vue'
 import {ElMessageBox} from "element-plus";
 import Navigation from "@/components/Navigation.vue";
+import Preview from "@/components/preview/Preview.vue";
 
 const emit = defineEmits(["addFile"]);
 const showLoading = ref(false)
@@ -421,12 +423,7 @@ const preview = (data) => {
     navigationRef.value.openFolder(data);
     return;
   }
-  message.error("文件预览 todo"); // todo
-  // if (data.status != 2) {
-  //   proxy.Message.warning("文件正在转码中，无法预览");
-  //   return;
-  // }
-  // previewRef.value.showPreview(data, 0);
+  previewRef.value.showPreview(data, 0);
 };
 //目录
 const navChange = (data) => {
@@ -438,14 +435,12 @@ const navChange = (data) => {
 
 //下载文件
 const download = async (row) => {
-  message.warning("todo download")
-  // let result = await proxy.Request({
-  //   url: api.createDownloadUrl + "/" + row.fileId,
-  // });
-  // if (!result) {
-  //   return;
-  // }
-  // window.location.href = api.download + "/" + result.data;
+  httpRequest.get('directory/createDownload/' + row.id).then(({data}) => {
+    if (data.code !== 0) throw data.msg
+    window.location.href = "/api/directory/download/" + data.data.code;
+  }).catch((e) => {
+    message.error("获取下载链接错误")
+  })
 };
 
 

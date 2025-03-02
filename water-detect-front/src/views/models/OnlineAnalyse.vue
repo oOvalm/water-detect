@@ -1,73 +1,31 @@
 <template>
-
   <div class="top">
     <div class="top-op">
       <el-button type="primary" @click="uploadRTSPStream">RTSP流</el-button>
       <el-button type="success" @click="startAnalysis">开始分析</el-button>
     </div>
-
   </div>
   <div class="double-video-player">
     <div class="video-container">
-      <video-player ref="videoRef1" :options="videoOptions1"></video-player>
+      <PreviewVideo url="/directory/ts/getVideoInfo/65"></PreviewVideo>
     </div>
     <div class="separator" @mousedown="startDrag"></div>
     <div class="video-container">
-      <video-player ref="videoRef2" :options="videoOptions2"></video-player>
+      <PreviewVideo url="/directory/ts/getVideoInfo/65"></PreviewVideo>
     </div>
   </div>
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted, getCurrentInstance} from 'vue'
-import Navigation from "@/components/Navigation.vue";
-import VideoPlayer from 'video-player';
-import 'video.js/dist/video-js.css';
+import {ref, onMounted, onUnmounted} from 'vue';
 import message from "@/utils/Message.js";
+import PreviewVideo from "@/components/preview/PreviewVideo.vue";
 
 const uploadRTSPStream = () => {
-  message.error('todo')
-}
-const startAnalysis = () => {
-  message.error('todo')
-}
-
-
-// 引用视频播放器
-const videoRef1 = ref();
-const videoRef2 = ref();
-
-// 视频配置选项
-const videoOptions1 = {
-  autoplay: false, // 自动播放
-  controls: true, // 显示控制条
-  preload: 'auto', // 预加载
-  width: '100%',
-  height: '100%',
-  fluid: true, // 自适应大小
-  loop: false,
-  sources: [
-    {
-      type: 'video/mp4',
-      src: 'file:///D:/Videos/small.mp4'
-    }
-  ]
+  message.error('todo');
 };
-
-const videoOptions2 = {
-  autoplay: false,
-  controls: true,
-  preload: 'auto',
-  width: '100%',
-  height: '100%',
-  fluid: true,
-  loop: false,
-  sources: [
-    {
-      type: 'video/mp4',
-      src: 'file:///D:/Videos/small.mp4'
-    }
-  ]
+const startAnalysis = () => {
+  message.error('todo');
 };
 
 // 拖动相关变量
@@ -84,11 +42,14 @@ const startDrag = (e) => {
 
 const handleDrag = (e) => {
   if (isDragging.value) {
+    const doubleVideoPlayer = document.querySelector('.double-video-player');
     const deltaX = e.clientX - startX.value;
-    const newLeft = separatorLeft.value + (deltaX / document.querySelector('.double-video-player').offsetWidth) * 100;
+    const newLeft = separatorLeft.value + (deltaX / doubleVideoPlayer.offsetWidth) * 100;
     if (newLeft > 10 && newLeft < 90) {
       separatorLeft.value = newLeft;
       startX.value = e.clientX;
+      // 更新 CSS 变量
+      doubleVideoPlayer.style.setProperty('--separator-left', `${newLeft}%`);
     }
   }
 };
@@ -100,9 +61,14 @@ const endDrag = () => {
 };
 
 onMounted(() => {
-  // 初始化视频播放器
-  const player1 = videoRef1.value.player;
-  const player2 = videoRef2.value.player;
+  const doubleVideoPlayer = document.querySelector('.double-video-player');
+  // 初始化 CSS 变量
+  doubleVideoPlayer.style.setProperty('--separator-left', `${separatorLeft.value}%`);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', handleDrag);
+  document.removeEventListener('mouseup', endDrag);
 });
 </script>
 
@@ -113,11 +79,19 @@ onMounted(() => {
   display: flex;
   height: 400px; /* 可根据需要调整高度 */
   width: 100%;
+  --separator-left: 50%; /* 初始分隔条位置 */
 }
 
 .video-container {
-  flex: 1;
   overflow: hidden;
+}
+
+.double-video-player .video-container:nth-child(1) {
+  width: calc(var(--separator-left) - 2.5px);
+}
+
+.double-video-player .video-container:nth-child(3) {
+  width: calc(100% - var(--separator-left) - 2.5px);
 }
 
 .separator {
@@ -125,35 +99,17 @@ onMounted(() => {
   background-color: #ccc;
   cursor: col-resize;
   position: relative;
-  left: calc(50% - 2.5px);
+  left: calc(var(--separator-left) - 2.5px);
   transition: left 0.2s ease;
   z-index: 1;
 }
 
-.separator::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -2px;
-  width: 9px;
-  height: 100%;
-}
-
-.double-video-player .video-container:nth-child(1) {
-  width: calc(100% - 5px);
-  width: calc(var(--separator-left, 50%) - 2.5px);
-}
-
-.double-video-player .video-container:nth-child(3) {
-  width: calc(100% - 5px);
-  width: calc(100% - var(--separator-left, 50%) - 2.5px);
-}
-
-.double-video-player::before {
-  --separator-left: 50%;
-  content: '';
-  display: block;
-  width: 0;
-  height: 0;
-}
+//.separator::before {
+//  content: '';
+//  position: absolute;
+//  top: 0;
+//  left: -2px;
+//  width: 9px;
+//  height: 100%;
+//}
 </style>

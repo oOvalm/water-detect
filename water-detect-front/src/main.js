@@ -22,6 +22,7 @@ import 'highlight.js/lib/common'
 import Message from '@/utils/Message'
 import Confirm from '@/utils/Confirm'
 import Verify from '@/utils/Verify'
+import ConstantsPlugin from "@/plugins/constants.js";
 // import Utils from '@/utils/Utils'
 
 
@@ -29,6 +30,7 @@ const app = createApp(App)
 app.use(ElementPlus);
 app.use(HljsVuePlugin);
 app.use(router)
+app.use(ConstantsPlugin);
 
 app.config.globalProperties.Message = Message;
 app.config.globalProperties.Confirm = Confirm;
