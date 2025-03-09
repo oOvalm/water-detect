@@ -59,8 +59,8 @@ const props = defineProps({
     default: false,
   },
 })
-const uploadCallbackHandler = () => {
-  emit("uploadCallback");
+const uploadCallbackHandler = (data) => {
+  emit("uploadCallback", data);
 }
 const uploaderRef = ref();
 const addFile = (file, filePid) => {

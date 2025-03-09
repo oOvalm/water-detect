@@ -15,7 +15,6 @@
               clearable
               placeholder="请输入邮箱"
               v-model.trim="formData.email"
-              maxLength="150"
           >
             <template #prefix>
               <span class="iconfont icon-account"></span>
@@ -336,8 +335,7 @@ const doSubmit = () => {
     httpRequest.post(url, params).then(({data}) => {
       console.log(data)
       if (data.code != 0) {
-        ElMessage.error(data.msg);
-        return
+        throw data;
       }
       //注册返回
       if (opType.value == 0) {
@@ -364,7 +362,8 @@ const doSubmit = () => {
         showPanel(1);
       }
     }).catch((error) => {
-      console.log(error)
+      changeCheckCode(0);
+      console.log(error);
       ElMessage.error(error.msg);
     })
   });

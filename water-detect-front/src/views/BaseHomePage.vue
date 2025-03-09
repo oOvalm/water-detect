@@ -36,10 +36,10 @@ import {nextTick, ref} from "vue";
 const routerViewRef = ref();
 const showUploader = ref(false);
 
-const uploadCallbackHandler = () => {
+const uploadCallbackHandler = (data) => {
   nextTick(() => {
     console.log("xxxx")
-    // routerViewRef.value.reload();
+    routerViewRef.value.uploadDone(data);
   });
 };
 const homeHeader = ref()

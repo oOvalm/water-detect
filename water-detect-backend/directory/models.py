@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db import models
 
 import account.models
+from common.models import SystemFolder
 
 
 class FileInfoManager(models.Manager):
@@ -61,7 +62,18 @@ class FileInfoManager(models.Manager):
             id += 1
         return filename
 
-
+    def ResolveFolderID(self, userID: int, folderID: int):
+        if folderID == SystemFolder.AnalyseFolder.value:
+            analyseFolder = super().filter(user_id=userID, folder_type=SystemFolder.AnalyseFolder.value)
+            if analyseFolder.count() == 0:
+                analyseFolder = self.createFolder(SystemFolder.Root.value, userID)
+                analyseFolder.folder_type = SystemFolder.AnalyseFolder.value
+                analyseFolder.filename = self.autoRename(SystemFolder.Root.value, "在线分析文件夹", userID)
+                analyseFolder.save()
+            else:
+                analyseFolder = analyseFolder[0]
+            return analyseFolder.id
+        return folderID
 
 # Create your models here.
 class FileInfo(models.Model):
@@ -71,6 +83,7 @@ class FileInfo(models.Model):
     file_path = models.CharField(default='', max_length=4096, db_comment='文件路径')
     file_type = models.SmallIntegerField(default=0, db_comment='1:目录 2:图片 3:视频')
     filename = models.CharField(max_length=4096, db_comment='用户上传时的文件名')
+    folder_type = models.SmallIntegerField(default=0, db_comment='0:普通文件夹 1:根文件夹 2:分析文件夹')
     user_id = models.IntegerField(db_comment='userID')
     thumbnail = models.BinaryField(null=True, db_comment='thumbnail')
     extra = models.BinaryField(null=True, db_comment='extra')
@@ -83,15 +96,3 @@ class FileInfo(models.Model):
     # recovery_time
     # del_flag
 
-class FileExtra():
-    pass
-
-class VideoType(Enum):
-    Raw = 1
-    Analysed = 2
-
-
-class FileType(Enum):
-    Folder = 1
-    Image = 2
-    Video = 3

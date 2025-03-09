@@ -4,7 +4,7 @@ from django.http import JsonResponse
 
 from common import constants
 from common.customError import CustomError
-from common.utils import NewErrorResponse
+from common.customResponse import NewErrorResponse
 from django.db import models
 
 logger = logging.getLogger(__name__)

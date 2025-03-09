@@ -26,7 +26,7 @@ from account.forms import RegisterForm, LoginForm
 from account.models import User
 from account.serializers import UserSerializer
 from common import constants, redis
-from common.utils import BaseResponse, NewSuccessResponse, NewErrorResponse
+from common.customResponse import BaseResponse, NewSuccessResponse, NewErrorResponse
 
 import json
 

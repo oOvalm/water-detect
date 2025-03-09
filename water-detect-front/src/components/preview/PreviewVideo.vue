@@ -38,6 +38,8 @@ const initPlayer = () => {
       },
     },
   });
+  dp.seek(30);
+  dp.seek(10);
 };
 
 onMounted(() => {

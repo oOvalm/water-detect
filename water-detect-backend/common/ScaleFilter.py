@@ -93,7 +93,7 @@ def cut_files(srcFilePath: str, destFolderPath: str, filename: str):
         settings.FFMPEG_PATH,
         "-i", tsPath,
         "-c", "copy", "-map", "0", "-f", "segment", "-segment_list", m3u8Path,
-        "-segment_time", "30", f"{destFolderPath}/{filename}_%04d.ts"
+        "-segment_time", "5", f"{destFolderPath}/{filename}_%06d.ts"
     ]
     print(' '.join(CMD_TRANSFER_2TS))
     print(' '.join(CMD_CUT_TS))

@@ -40,9 +40,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     "rest_framework_simplejwt",
+    'captcha',
+    'common',
     'account',
     'directory',
-    'captcha',
+    'self_test',
+    'yolo',
 ]
 
 MIDDLEWARE = [
@@ -145,6 +148,20 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',  # 可根据需要调整日志级别
+    },
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -195,3 +212,10 @@ MEDIA_ROOT = os.path.join("D:\\coding\\graduation-design\\water-detect\\", 'medi
 MEDIA_URL = 'D:/coding/graduation-design/water-detect/media/'
 
 FFMPEG_PATH = r'D:\Program Files\ffmpeg-7.1-full_build\bin\ffmpeg.exe'
+
+RABBITMQ_CONFIG = {
+    'host': '192.168.198.100',  # 替换为你的NameServer地址
+    'port': 5672,
+    'username': 'water-detect-proj',
+    'password': 'water-detect-proj'
+}

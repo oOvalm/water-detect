@@ -1,11 +1,12 @@
-from django.urls import path, include
+from django.urls import path, include, re_path
 
 from directory.views import VideoView, FileListView, FolderListView, VideoV2View, ThumbnailView, GetFileView, \
-    DownloadFileView
+    DownloadFileView, FileInfoView
 
 urlpatterns = [
     path('video', VideoView.as_view(), name='video'),
     path('fileList', FileListView.as_view(), name='FileList'),
+    re_path(r'^FileInfo/(?P<pathType>uid|id)/(?P<fileID>\S+)$', FileInfoView.as_view(), name='FileInfo'),
     path('folderList', FolderListView.as_view(), name='FolderList'),
     path('video/v2', VideoV2View.as_view(), name='VideoV2'),
     path('thumbnail', ThumbnailView.as_view(), name='Thumbnail'),

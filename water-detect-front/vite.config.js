@@ -18,6 +18,7 @@ export default defineConfig({
     server: {
         port: 8888,
         hmr: true,
+        hot: true,
         proxy: {
             "/api": {
                 target: "http://localhost:8000",

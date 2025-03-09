@@ -211,6 +211,7 @@ const addFile = async (file, filePid) => {
     return;
   }
   uploadFile(md5FileUid);
+  emit("uploadDone", );
 };
 defineExpose({addFile});
 
@@ -306,7 +307,7 @@ const uploadFile = async (uid, chunkIndex) => {
         uploadResult.data.status === STATUS.upload_finish.value
     ) {
       currentFile.uploadProgress = 100;
-      emit("uploadCallback");
+      emit("uploadCallback", {fileUID: currentFile.fileId, file:currentFile.file});
       break;
     }
   }

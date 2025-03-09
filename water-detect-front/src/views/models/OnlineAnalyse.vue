@@ -5,23 +5,23 @@
       <el-button type="success" @click="startAnalysis">开始分析</el-button>
     </div>
   </div>
-  <div class="box" ref="box" id="double-video" v-if="fileInfo.id">
-    <div class="left" id="left">
-      <PreviewVideo url="x"></PreviewVideo>
+  <div class="box" ref="doubleVideoRef" v-if="fileInfo.id">
+    <div class="left" ref="leftRef">
+      <PreviewVideo :url="originUrl"></PreviewVideo>
     </div>
-    <div class="resize" title="分界线" id="splitter">
+    <div class="resize" ref="splitterRef" title="分界线">
       <div class="dots">⋮</div>
     </div>
-    <div class="right" id="right">
-      <PreviewVideo url="x"></PreviewVideo>
+    <div class="right" ref="rightRef">
+      <PreviewVideo :url="analysedUrl"></PreviewVideo>
     </div>
   </div>
   <div v-else>
     <el-upload
-        class="upload-demo"
+        :multiple="false"
+        :show-file-list="false"
         drag
-        action="https://run.mocky.io/v3/9d059bf9-4660-45f2-925d-ce80ad6c4d15"
-        multiple
+        :http-request="uploadFile"
     >
       <el-icon class="el-icon--upload">
         <upload-filled/>
@@ -39,12 +39,23 @@
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted} from 'vue';
+import {ref, onMounted, onUnmounted, watch, nextTick} from 'vue';
 import message from "@/utils/Message.js";
-import PreviewVideo from "@/components/preview/PreviewVideo.vue";
+import httpRequest from "@/api/httpRequest.ts";
 import {UploadFilled} from "@element-plus/icons-vue";
+import Preview from "@/components/preview/Preview.vue";
+import PreviewVideo from "@/components/preview/PreviewVideo.vue";
 
+const emit = defineEmits(["addFile"]);
 const fileInfo = ref({});
+
+const originRef = ref();
+const analysedRef = ref();
+const splitterRef = ref();
+const leftRef = ref();
+const rightRef = ref();
+const doubleVideoRef = ref();
+const originUrl = ref();
 
 const uploadRTSPStream = () => {
   message.error('todo');
@@ -53,12 +64,44 @@ const startAnalysis = () => {
   message.error('todo');
 };
 
-onMounted(() => {
-  var resize = document.getElementById('splitter');
-  var left = document.getElementById('left');
-  var right = document.getElementById('right');
-  var doubleVideo = document.getElementById('double-video');
+const uploadFile = async (fileData) => {
+  emit("addFile", {file: fileData.file, filePid: -2});
+}
+const uploadDone = ({fileUID}) => {
+  httpRequest.get(`/directory/FileInfo/uid/${fileUID}`).then(({data}) => {
+    if (data.code == null || data.code !== 0) {
+      throw new Error(data.msg);
+    }
+    fileInfo.value = data.data;
+    originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}`;
+    originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}?analysed=true`;
+    // console.log(originRef)
+    // originRef.value.showPreview(fileInfo, 0);
+    console.log(fileInfo.value);
+  }).catch((e) => {
+    console.log(e)
+  })
+}
+defineExpose({uploadDone});
 
+watch(fileInfo, (newVal) => {
+  if (newVal) {
+    console.log(newVal);
+    nextTick(() => {
+      if (newVal.id) {
+        addListener();
+      }
+    })
+  }
+})
+
+
+const addListener = () => {
+  let resize = splitterRef.value;
+  let left = leftRef.value;
+  let right = rightRef.value;
+  let doubleVideo = doubleVideoRef.value;
+  console.log(resize)
   // 鼠标按下事件
   resize.onmousedown = function (e) {
     // 颜色改变提醒
@@ -91,12 +134,23 @@ onMounted(() => {
     resize.setCapture && resize.setCapture(); // 设置鼠标捕获
     return false;
   };
-});
+}
 
-onUnmounted(() => {
-  document.removeEventListener('mousemove', handleDrag);
-  document.removeEventListener('mouseup', endDrag);
-});
+const removeListener = () => {
+  // 移除鼠标事件
+  if (splitterRef.value) {
+    splitterRef.value.onmousedown = null;
+    document.onmousemove = null;
+    document.onmouseup = null;
+  }
+}
+
+// onMounted(() => {
+//   addListener()
+// });
+
+onUnmounted(removeListener);
+
 </script>
 
 <style lang="scss" scoped>

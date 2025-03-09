@@ -1,5 +1,5 @@
 from common import constants
-from common.utils import NewErrorResponse
+from common.customResponse import NewErrorResponse
 
 
 class CustomError(Exception):

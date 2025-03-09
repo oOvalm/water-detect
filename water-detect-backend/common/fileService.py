@@ -1,10 +1,11 @@
 import os
+import shutil
 import uuid
 from abc import ABC, abstractmethod
 
 from common import ScaleFilter, constants
 from common.customError import ParamError, InternalServerError
-from directory.models import FileType
+from common.models import FileType
 from waterDetect import settings
 
 
@@ -103,13 +104,17 @@ class LocalFileService(fileServiceABC):
 
 
     def DeleteFile(self, fileUID):
-        upload_dir = os.path.join(settings.MEDIA_ROOT, 'videos')
-        file_path = os.path.join(upload_dir, f"{fileUID}.mp4")
+        file_path = os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileUID}.mp4")
         if os.path.exists(file_path):
             os.remove(file_path)
-        thumbnail_path = os.path.join(upload_dir, f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}")
+        thumbnail_path = os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}")
         if os.path.exists(thumbnail_path):
             os.remove(thumbnail_path)
+        cuts_path = os.path.join(settings.MEDIA_ROOT, 'cuts', f"{fileUID}")
+        if os.path.exists(cuts_path) and os.path.isdir(cuts_path):
+            shutil.rmtree(cuts_path)
+        # todo: 删除分析后的视频文件
+
 
 
     def _cutFile4Video(self, fileUID: str):
@@ -120,13 +125,15 @@ class LocalFileService(fileServiceABC):
             os.makedirs(tsFolder)
         ScaleFilter.cut_files(file_path, tsFolder, fileUID)
 
+    def GetTSFolder(self, fileUID):
+        return os.path.join(settings.MEDIA_ROOT, 'cuts', fileUID)
     def GetM3U8Path(self, fileUID):
         return self._getFilePath(fileUID, "m3u8")
     def GetTSPath(self, fileUID, tsName):
         return self._getFilePath(fileUID, "ts", tsName=tsName)
     def getThumbnailPath(self, fileUID):
         return self._getFilePath(fileUID, "thumbnail")
-    def GetFilePath(self, fileUID, fileType: FileType):
+    def GetFilePath(self, fileUID, fileType):
         if fileType == FileType.Video.value:
             return self._getFilePath(fileUID, "video")
         elif fileType == FileType.Image.value:

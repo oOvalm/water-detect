@@ -2,14 +2,14 @@ import threading
 
 from django.apps import AppConfig
 
-from yolo.consumer import initYoloConsumer
+from self_test.rocketmq_utils import initConsumer
 
 
-class YoloConfig(AppConfig):
+class SelfTestConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'yolo'
+    name = 'self_test'
+
     def ready(self):
-        thread = threading.Thread(target=initYoloConsumer)
+        thread = threading.Thread(target=initConsumer)
         thread.daemon = True
         thread.start()
-

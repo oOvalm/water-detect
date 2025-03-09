@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.http import FileResponse, StreamingHttpResponse
 from django.shortcuts import render
+from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,11 +16,13 @@ from rest_framework.views import APIView
 from common import constants, ScaleFilter
 from common.constants import UploadFileStatus
 from common.customError import InternalServerError, ParamError
-from common.utils import NewSuccessResponse, NewErrorResponse
+from common.mqModels import AnalyseTask
+from common.customResponse import NewSuccessResponse, NewErrorResponse
 from directory.forms import GetFileListForm
-from directory.models import VideoType, FileInfo, FileType
+from common.models import VideoType, FileType
+from directory.models import FileInfo
 from directory.serializers import FileInfoSerializer
-from directory.service import fileManager
+from directory.service import fileManager, mq
 from waterDetect import settings
 
 logger = logging.getLogger(__name__)
@@ -65,6 +68,8 @@ class VideoV2View(APIView):
         except ValueError:
             return NewErrorResponse(400, "chunkIndex and chunks must be integers")
 
+        file_pid = FileInfo.objects.ResolveFolderID(request.user.id, file_pid)
+
         file_id, fileSize, done = fileManager.uploadVideoChunk(
             file=file,
             chunk_index=chunk_index,
@@ -85,6 +90,7 @@ class VideoV2View(APIView):
                 filename=file_name,
                 user_id=request.user.id,
             )
+            mq.sendAnalyseTask(AnalyseTask(fileInfo.id, fileInfo.file_type, fileInfo.file_uid))
             status = UploadFileStatus.upload_finish.value
 
 
@@ -174,9 +180,9 @@ class FileListView(APIView):
         if not file_ids:
             raise ParamError("No valid file IDs provided")
         files = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id)
-        deleted_count, _ = files.delete()
         for file in files:
             fileManager.DeleteFile(file.file_uid)
+        deleted_count, _ = files.delete()
         return NewSuccessResponse({"count": deleted_count})
 
 
@@ -253,3 +259,12 @@ class DownloadFileView(APIView):
             response['Content-Disposition'] = f'attachment; filename={fileInfo.filename}'
             return response
 
+
+class FileInfoView(APIView):
+    def get(self, request, fileID, pathType):
+        userID, fileInfo = request.user.id, None
+        if pathType == "id":
+            fileInfo = FileInfo.objects.get(id=fileID, user_id=userID)
+        elif pathType == "uid":
+            fileInfo = FileInfo.objects.get(file_uid=fileID, user_id=userID)
+        return NewSuccessResponse(FileInfoSerializer(fileInfo).data)

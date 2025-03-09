@@ -21,5 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('account/', include('account.urls')),
     path('captcha/', include('captcha.urls')),
-    path('directory/', include('directory.urls'))
+    path('directory/', include('directory.urls')),
+    path('selfTest/', include('self_test.urls'))
 ]

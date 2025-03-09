@@ -171,8 +171,11 @@ const reload = () => {
   showLoading.value = false;
   loadDataList();
 };
+const uploadDone = (data) => {
+  reload();
+}
 defineExpose({
-  reload,
+  uploadDone,
 });
 
 const currentFolder = ref({fileID: -1})
