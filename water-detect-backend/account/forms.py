@@ -1,9 +1,8 @@
 from django import forms
-from rest_framework import serializers
-import hashlib
 
-from account.models import User
-from common import redis, utils
+from database.models import User
+from common import utils
+from common_service import redis
 
 
 class RegisterForm(forms.Form):

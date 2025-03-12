@@ -1,32 +1,19 @@
-import email
 import hashlib
-import logging
 import string
-from logging import Logger
 import random
 
-from django.contrib.auth import authenticate
 from django.core.mail import send_mail
-from django.shortcuts import render
-from django.views.decorators.http import require_http_methods
-from django.views.generic import View
-from rest_framework import permissions, status
-from rest_framework.decorators import permission_classes
-from rest_framework.generics import CreateAPIView
 from rest_framework.views import APIView
 from captcha.models import CaptchaStore
 from captcha.helpers import captcha_image_url
-from django.http import HttpResponse, JsonResponse
-from rest_framework import generics, permissions
-from rest_framework.response import Response
+from rest_framework import permissions
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.cache import cache
 
 from account.forms import RegisterForm, LoginForm
-from account.models import User
-from account.serializers import UserSerializer
-from common import constants, redis
-from common.customResponse import BaseResponse, NewSuccessResponse, NewErrorResponse
+from database.models import User
+from common import constants
+from common_service import redis
+from common.customResponse import NewSuccessResponse, NewErrorResponse
 
 import json
 

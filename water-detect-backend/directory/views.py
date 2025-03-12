@@ -1,29 +1,22 @@
 import json
 import logging
-import os
 import uuid
 
-import redis
 from django.core.cache import cache
-from django.db import transaction
 from django.http import FileResponse, StreamingHttpResponse
-from django.shortcuts import render
-from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common import constants, ScaleFilter
+from common import constants
 from common.constants import UploadFileStatus
 from common.customError import InternalServerError, ParamError
 from common.mqModels import AnalyseTask
 from common.customResponse import NewSuccessResponse, NewErrorResponse
 from directory.forms import GetFileListForm
-from common.models import VideoType, FileType
-from directory.models import FileInfo
+from database.models import FileType, FileInfo
 from directory.serializers import FileInfoSerializer
 from directory.service import fileManager, mq
-from waterDetect import settings
 
 logger = logging.getLogger(__name__)
 # Create your views here.

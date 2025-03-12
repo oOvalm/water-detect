@@ -7,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 # 模拟 StringTools.isEmpty 方法
 def is_empty(cmd):
+    # 如果cmd是string
+    if isinstance(cmd, list):
+        return cmd is None or len(cmd) == 0
     return cmd is None or cmd.strip() == ""
 
 class ProcessKiller(Thread):
@@ -67,9 +70,6 @@ def execute_command(cmd, outprint_log=False):
             logger.info(f"执行命令:{cmd}，已执行完毕")
 
         return result
-    except Exception as e:
-        logger.error(str(e))
-        raise Exception("视频转换失败")
     finally:
         if process:
             killer = ProcessKiller(process)

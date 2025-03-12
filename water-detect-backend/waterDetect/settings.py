@@ -9,9 +9,12 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
+import logging
 import os
 from datetime import timedelta
 from pathlib import Path
+
+from waterDetect.log_config import set_module_log_level
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,11 +45,14 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     'captcha',
     'common',
+    'database',
+    'common_service',
     'account',
     'directory',
     'self_test',
     'yolo',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -113,7 +119,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-AUTH_USER_MODEL = 'account.User'
+AUTH_USER_MODEL = 'database.User'
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
@@ -147,6 +153,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+set_module_log_level('pika', logging.INFO)
+set_module_log_level('subprocess', logging.INFO)
 
 LOGGING = {
     'version': 1,

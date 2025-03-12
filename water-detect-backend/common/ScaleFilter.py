@@ -1,13 +1,11 @@
 import os
-import subprocess
 from PIL import Image
 import logging
-import shutil
 
+from common.ProcessUtils import execute_command
 from waterDetect import settings
 
 # 配置日志记录
-logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 def create_cover4video(source_file_path, width, target_file_path):
@@ -29,7 +27,7 @@ def create_cover4video(source_file_path, width, target_file_path):
         ]
         print(cmd)
         # 执行命令
-        subprocess.run(cmd, shell=True, check=True)
+        execute_command(cmd)
     except Exception as e:
         # 记录错误日志
         logger.error(f"生成视频封面失败{e}", exc_info=True)
@@ -71,7 +69,7 @@ def compress_image(source_file_path, width, target_file_path, del_source):
         # 构建 ffmpeg 命令
         cmd = f"ffmpeg -i {source_file_path} -vf scale={width}:-1 {target_file_path} -y"
         # 执行命令
-        subprocess.run(cmd, shell=True, check=True)
+        execute_command(cmd)
         if del_source:
             # 删除源文件
             os.remove(source_file_path)
@@ -100,15 +98,15 @@ def cut_files(srcFilePath: str, destFolderPath: str, filename: str):
 
     # 生成 .ts 文件
     try:
-        subprocess.run(CMD_TRANSFER_2TS, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
+        execute_command(CMD_TRANSFER_2TS)
+    except Exception as e:
         print(f"执行生成 .ts 文件的命令时出错: {e}")
         return
 
     # 生成索引文件 .m3u8 和切片 .ts
     try:
-        subprocess.run(CMD_CUT_TS, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
+        execute_command(CMD_CUT_TS)
+    except Exception as e:
         print(f"执行生成 .m3u8 和切片 .ts 文件的命令时出错: {e}")
         return
     if os.path.exists(tsPath):

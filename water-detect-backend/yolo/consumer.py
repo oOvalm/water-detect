@@ -4,15 +4,12 @@ import logging
 import pika
 
 from common.mqModels import AnalyseTask
-from common.models import FileType
 from waterDetect import settings
 from yolo.service import fileManager
 from yolo.yolo_model.main import AnalyseVideo
 
 
 def initYoloConsumer():
-    pikaLogger = logging.getLogger('pika')
-    pikaLogger.setLevel(logging.ERROR)
     print('initConsumer, yolo-analyse')
     params = pika.ConnectionParameters(
         host=settings.RABBITMQ_CONFIG['host'],
@@ -34,12 +31,21 @@ def initYoloConsumer():
 logger = logging.getLogger(__name__)
 
 def consumeHandler(ch, method, properties, body):
+    from database.models import FileType, FileInfo
     try:
         bodyDict = json.loads(body)
         mqInfo = AnalyseTask(**bodyDict)
         tsFolder = fileManager.GetTSFolder(mqInfo.fileUID)
         logger.info(f"consumer path: {tsFolder}, mqInfo: {mqInfo}")
-        # TODO: 确认file状态
+
+        try:
+           FileInfo.objects.get(id=mqInfo.fileID, file_uid=mqInfo.fileUID)
+        except FileInfo.DoesNotExist:
+            logger.warning(f"file not exist, skip task: {mqInfo.fileID} {mqInfo.fileUID}")
+            return
+
+
+
         if mqInfo.fileType == FileType.Video.value:
             AnalyseVideo(tsFolder, mqInfo.fileUID)
         else:

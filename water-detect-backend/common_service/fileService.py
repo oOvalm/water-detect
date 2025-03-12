@@ -4,8 +4,8 @@ import uuid
 from abc import ABC, abstractmethod
 
 from common import ScaleFilter, constants
-from common.customError import ParamError, InternalServerError
-from common.models import FileType
+from common.customError import ParamError
+from database.models import FileType
 from waterDetect import settings
 
 

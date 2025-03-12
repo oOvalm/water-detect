@@ -1,16 +1,13 @@
 import re
 from enum import Enum
 
-from django.core.files import File
-from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.db import models
 
-import account.models
-from common.models import SystemFolder
+from database.models.user import User
 
 
 class FileInfoManager(models.Manager):
-    def createVideo(self, file_pid: int, filename: str, fileSize: int, fileID: str, user: account.models.User):
+    def createVideo(self, file_pid: int, filename: str, fileSize: int, fileID: str, user: User):
         fileinfo = FileInfo(
             size = fileSize,
             file_pid = file_pid,
@@ -92,7 +89,22 @@ class FileInfo(models.Model):
 
     objects = FileInfoManager()
 
-    # status
-    # recovery_time
-    # del_flag
+    class Meta:
+        db_table = 'water_detect_file_info'
 
+class FileExtra():
+    pass
+
+class VideoType(Enum):
+    Raw = 1
+    Analysed = 2
+
+
+class FileType(Enum):
+    Folder = 1
+    Image = 2
+    Video = 3
+
+class SystemFolder(Enum):
+    Root = -1
+    AnalyseFolder = -2

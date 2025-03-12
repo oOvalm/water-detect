@@ -1,3 +1,3 @@
-from common.fileService import LocalFileService
+from common_service.fileService import LocalFileService
 
 fileManager = LocalFileService()

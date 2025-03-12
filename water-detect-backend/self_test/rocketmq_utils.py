@@ -3,6 +3,7 @@ import pika
 from waterDetect import settings
 
 def initConsumer():
+    from database.models import FileType, FileInfo
     print('initConsumer')
     # 连接到RabbitMQ服务器
     params = pika.ConnectionParameters(
