@@ -2,3 +2,4 @@
 /water-detect-backend/.idea/
 /water-detect-backend/media/
 media/
+__pycache__/
