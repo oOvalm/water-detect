@@ -1,10 +1,12 @@
 import logging
 import os
+import shutil
 import threading
 import time
 from ultralytics import YOLO
 from moviepy import VideoFileClip
 
+from common_service import redis
 from waterDetect import settings
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
@@ -25,24 +27,47 @@ def GetFromModel(path: str, destFolderName: str, projFolderName: str):
 
 def AnalyseVideo(path: str, fileUID: str):
     logger.info(f"start analyse video {fileUID}")
-    destFolder = os.path.join(BASE_TMP, fileUID)
+    tempAnalyseFolder = os.path.join(BASE_TMP, fileUID)
+    destFolder = os.path.join(CUT_PATH, f"analysed_{fileUID}")
     files = os.listdir(path)
-    for file in files:
+    threads = []
+
+    redis.UploadAnalyseProcess(fileUID, total=len(files), finished=0)
+    if not os.path.exists(destFolder):
+        os.makedirs(destFolder)
+    originM3U8 = os.path.join(path, 'index.m3u8')
+    destM3U8 = os.path.join(destFolder, 'index.m3u8')
+    if os.path.exists(originM3U8):
+        shutil.copy2(originM3U8, destM3U8)  # 复制 index.m3u8 文件
+    else:
+        logger.warning(f"index.m3u8 not found {originM3U8}")
+
+    for i, file in enumerate(files):
         if file.endswith('.ts') or file.endswith('.mp4'):
             filename = f"analysed_{file.split('.')[0]}"
-            print('aaa')
             GetFromModel(os.path.join(path, file), filename, fileUID)
-            print('xxx')
             # 启动一个线程
-            threading.Thread(
+            thread = threading.Thread(
                 target=resolveDoneVideo,
-                args=(os.path.join(destFolder, filename, f"{file.split('.')[0]}.avi"), filename)).start()
-            print('yyy')
+                args=(
+                    os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
+                    destFolder,
+                    fileUID))
+            thread.start()
+            threads.append(thread)
+        redis.UploadAnalyseProcess(fileUID, total=len(files), finished=i+1)
 
+    # 等待所有线程完成
+    for thread in threads:
+        thread.join()
+    if os.path.exists(tempAnalyseFolder):
+        shutil.rmtree(tempAnalyseFolder)  # 删除临时文件夹
+    else:
+        logger.warning(f"temp folder not exist {tempAnalyseFolder}")
     return destFolder
 
-def resolveDoneVideo(videoPath, filename):
-    avi_to_ts(videoPath, videoPath.replace('.avi', '.ts'))
+def resolveDoneVideo(videoPath, destFolder, fileUID):
+    avi_to_ts(videoPath, os.path.join(destFolder, f"{fileUID}.ts"))
 
 def avi_to_ts(input_file, output_file):
     """
@@ -51,7 +76,7 @@ def avi_to_ts(input_file, output_file):
     :param input_file: 输入的AVI文件路径
     :param output_file: 输出的TS文件路径
     """
-    print('start conver', input_file, output_file)
+    print('start convert avi to ts', input_file, output_file)
     # 加载AVI视频文件
     clip = VideoFileClip(input_file)
     # 将视频保存为TS格式

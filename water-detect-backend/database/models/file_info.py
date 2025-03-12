@@ -1,8 +1,10 @@
+import json
 import re
 from enum import Enum
 
 from django.db import models
 
+from common.db_model import FileExtra
 from database.models.user import User
 
 
@@ -73,6 +75,9 @@ class FileInfoManager(models.Manager):
         return folderID
 
 # Create your models here.
+
+
+
 class FileInfo(models.Model):
     file_pid = models.IntegerField(default=-1, db_comment='父目录id')
     file_uid = models.CharField(null=True, max_length=4096, db_comment='文件唯一标识')
@@ -88,12 +93,27 @@ class FileInfo(models.Model):
     update_time = models.DateTimeField(auto_now=True,null=False)
 
     objects = FileInfoManager()
+    @property
+    def fileExtra(self)->FileExtra :
+        if self.extra:
+            try:
+                return FileExtra.from_json(self.extra)
+            except Exception:
+                return FileExtra()
+        return FileExtra()
+
+    def save(self, *args, **kwargs):
+        if hasattr(self, 'fileExtra'):
+            try:
+                extra_data = json.dumps(self.fileExtra.__json__())
+                self.extra = extra_data.encode('utf-8')
+            except (AttributeError, TypeError, UnicodeEncodeError):
+                self.extra = None
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'water_detect_file_info'
 
-class FileExtra():
-    pass
 
 class VideoType(Enum):
     Raw = 1

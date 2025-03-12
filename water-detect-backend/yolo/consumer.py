@@ -5,7 +5,6 @@ import pika
 
 from common.mqModels import AnalyseTask
 from waterDetect import settings
-from yolo.service import fileManager
 from yolo.yolo_model.main import AnalyseVideo
 
 
@@ -32,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 def consumeHandler(ch, method, properties, body):
     from database.models import FileType, FileInfo
+    from yolo.service import fileManager
     try:
         bodyDict = json.loads(body)
         mqInfo = AnalyseTask(**bodyDict)
