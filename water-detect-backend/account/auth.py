@@ -1,5 +1,5 @@
 from django.contrib.auth.backends import ModelBackend
-from .models import User
+from database.models import User
 
 class WaterDetectBackend(ModelBackend):
     def authenticate(self, request, email=None, password=None, **kwargs):

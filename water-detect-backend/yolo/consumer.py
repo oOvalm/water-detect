@@ -3,6 +3,7 @@ import logging
 
 import pika
 
+from common.db_model import FileType
 from common.mqModels import AnalyseTask
 from waterDetect import settings
 from yolo.yolo_model.main import AnalyseVideo
@@ -30,12 +31,12 @@ def initYoloConsumer():
 logger = logging.getLogger(__name__)
 
 def consumeHandler(ch, method, properties, body):
-    from database.models import FileType, FileInfo
-    from yolo.service import fileManager
+    from database.models import FileInfo
+    from common_service.fileService import FileManager
     try:
         bodyDict = json.loads(body)
         mqInfo = AnalyseTask(**bodyDict)
-        tsFolder = fileManager.GetTSFolder(mqInfo.fileUID)
+        tsFolder = FileManager().GetTSFolder(mqInfo.fileUID)
         logger.info(f"consumer path: {tsFolder}, mqInfo: {mqInfo}")
 
         try:

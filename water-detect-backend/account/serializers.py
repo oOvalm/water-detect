@@ -1,6 +1,6 @@
 import hashlib
 from rest_framework import serializers
-from .models import User
+from database.models import User
 
 
 class UserSerializer(serializers.ModelSerializer):

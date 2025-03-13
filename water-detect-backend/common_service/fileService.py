@@ -1,12 +1,14 @@
 import os
 import shutil
+import threading
 import uuid
 from abc import ABC, abstractmethod
 
 from common import ScaleFilter, constants
 from common.customError import ParamError
-from database.models import FileType
+from common.db_model import FileType
 from waterDetect import settings
+
 
 
 class fileServiceABC(ABC):
@@ -79,14 +81,19 @@ class LocalFileService(fileServiceABC):
             os.rmdir(file_path)
             done = True
         if done:
-            ScaleFilter.create_cover4video(
-                f'{settings.MEDIA_ROOT}/videos/{fileID}.mp4',
-                constants.VIDEO_COVER_WIDTH,
-                f'{settings.MEDIA_ROOT}/thumbnail/{fileID}.{constants.THUMBNAIL_FILE_TYPE}',
-            )
+            self.CreateThumbnail(f'{settings.MEDIA_ROOT}/videos/{fileID}.mp4', fileID)
             self._cutFile4Video(fileID)
             # 视频切片
         return fileID, totSize, done
+
+    def CreateThumbnail(self, videoPath, fileUID):
+        thumbnailPath = f'{settings.MEDIA_ROOT}/thumbnail/{fileUID}.{constants.THUMBNAIL_FILE_TYPE}'
+        ScaleFilter.create_cover4video(
+            videoPath,
+            constants.VIDEO_COVER_WIDTH,
+            thumbnailPath,
+        )
+        return thumbnailPath
 
     def getVideo(self, fileID):
         upload_dir = os.path.join(settings.MEDIA_ROOT, 'videos')
@@ -104,16 +111,22 @@ class LocalFileService(fileServiceABC):
 
 
     def DeleteFile(self, fileUID):
-        file_path = os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileUID}.mp4")
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        thumbnail_path = os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}")
-        if os.path.exists(thumbnail_path):
-            os.remove(thumbnail_path)
-        cuts_path = os.path.join(settings.MEDIA_ROOT, 'cuts', f"{fileUID}")
-        if os.path.exists(cuts_path) and os.path.isdir(cuts_path):
-            shutil.rmtree(cuts_path)
-        # todo: 删除分析后的视频文件
+        removeFiles = [
+            os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileUID}.mp4"),
+            os.path.join(settings.MEDIA_ROOT, 'video', f"analysed_{fileUID}.mp4"),
+            os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}"),
+            os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"analysed_{fileUID}.{constants.THUMBNAIL_FILE_TYPE}"),
+        ]
+        removeFolders = [
+            os.path.join(settings.MEDIA_ROOT, 'cuts', f"{fileUID}"),
+            os.path.join(settings.MEDIA_ROOT, 'cuts', f"analysed_{fileUID}")
+        ]
+        for path in removeFiles:
+            if os.path.exists(path):
+                os.remove(path)
+        for folder in removeFolders:
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
 
 
 
@@ -154,3 +167,12 @@ class LocalFileService(fileServiceABC):
             raise ParamError("todo!!")
         else:
             raise ParamError("todo!!")
+
+_fileManager = None
+once = threading.Lock()
+def FileManager() -> LocalFileService:
+    global _fileManager
+    with once:
+        if _fileManager is None:
+            _fileManager = LocalFileService()
+        return _fileManager

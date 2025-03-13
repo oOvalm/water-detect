@@ -11,12 +11,14 @@ from rest_framework.views import APIView
 from common import constants
 from common.constants import UploadFileStatus
 from common.customError import InternalServerError, ParamError
+from common.db_model import FileType
 from common.mqModels import AnalyseTask
 from common.customResponse import NewSuccessResponse, NewErrorResponse
+from common_service.fileService import FileManager
+from database.models import FileInfo
 from directory.forms import GetFileListForm
-from database.models import FileType, FileInfo
 from directory.serializers import FileInfoSerializer
-from directory.service import fileManager, mq
+from directory.service import mq
 
 logger = logging.getLogger(__name__)
 # Create your views here.
@@ -25,7 +27,7 @@ class VideoView(APIView):
         # 获取上传的文件
         video_file = request.FILES.get('video')
         if video_file:
-            fileID = fileManager.uploadVideo(video_file)
+            fileID = FileManager().uploadVideo(video_file)
             opUser = request.user
             video = FileInfo.objects.createVideo(video_file, fileID, opUser)
             return NewSuccessResponse({"fileID": video.id})
@@ -35,7 +37,7 @@ class VideoView(APIView):
     def get(self, request):
         uid = request.GET.get('uid')
         video = FileInfo.objects.get(file_uid=uid, user_id=request.user.id)
-        videoFile = fileManager.getVideo(video.file_uid)
+        videoFile = FileManager().getVideo(video.file_uid)
         response = Response(videoFile, content_type='directory/mp4')
         response['Content-Disposition'] = f'attachment; filename={video.filename}'
         return response
@@ -63,7 +65,7 @@ class VideoV2View(APIView):
 
         file_pid = FileInfo.objects.ResolveFolderID(request.user.id, file_pid)
 
-        file_id, fileSize, done = fileManager.uploadVideoChunk(
+        file_id, fileSize, done = FileManager().uploadVideoChunk(
             file=file,
             chunk_index=chunk_index,
             chunks=chunks,
@@ -174,7 +176,7 @@ class FileListView(APIView):
             raise ParamError("No valid file IDs provided")
         files = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id)
         for file in files:
-            fileManager.DeleteFile(file.file_uid)
+            FileManager().DeleteFile(file.file_uid)
         deleted_count, _ = files.delete()
         return NewSuccessResponse({"count": deleted_count})
 
@@ -207,7 +209,7 @@ class ThumbnailView(APIView):
         if fileID is None:
             raise ParamError("Missing fileID parameter")
         file = FileInfo.objects.get(id=fileID)
-        file_path = fileManager.getThumbnailPath(file.file_uid)
+        file_path = FileManager().getThumbnailPath(file.file_uid)
         thumbnail = open(file_path, 'rb')
         return FileResponse(thumbnail, content_type='image/jpeg')
 
@@ -219,11 +221,11 @@ class GetFileView(APIView):
         if fileID[-3:] == ".ts":
             # fileID根据下划线分隔
             fileUID = fileID.split('_')[0]
-            path = fileManager.GetTSPath(fileUID, fileID)
+            path = FileManager().GetTSPath(fileUID, fileID)
         else:
             fileInfo = FileInfo.objects.get(id=fileID)
             if fileInfo.file_type == FileType.Video.value:
-                path = fileManager.GetM3U8Path(fileInfo.file_uid)
+                path = FileManager().GetM3U8Path(fileInfo.file_uid)
             else:
                 return NewErrorResponse("todo file type")
         if path == "":
@@ -245,7 +247,7 @@ class DownloadFileView(APIView):
             if fileID is None:
                 return NewErrorResponse(400, "invalid code")
             fileInfo = FileInfo.objects.get(id=fileID)
-            path = fileManager.GetFilePath(fileInfo.file_uid, fileInfo.file_type)
+            path = FileManager().GetFilePath(fileInfo.file_uid, fileInfo.file_type)
             file = open(path, 'rb')
             response = StreamingHttpResponse(file)
             response['Content-Type'] = 'application/octet-stream'
