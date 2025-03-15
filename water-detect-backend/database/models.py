@@ -7,7 +7,7 @@ from enum import Enum
 
 from django.db import models
 
-from common.db_model import FileExtra, SystemFolder
+from common.db_model import FileExtra, SystemFolder, AnalyseFileType
 
 
 # Create your models here.
@@ -77,6 +77,21 @@ class FileInfoManager(models.Manager):
         )
         fileinfo.save()
         return fileinfo
+    def createAnalysedFile(self, oriFileID, analysedUID, fileSize=0):
+        oriFile = FileInfo.objects.get(id=oriFileID)
+        analysedFileInfo = FileInfo(
+            file_pid=SystemFolder.AnalysedFolder.value,
+            user_id = oriFile.user_id,
+            size = fileSize,
+            file_type = oriFile.file_type,
+            filename = f"analysed_{oriFile.filename}",
+            file_uid = analysedUID,
+            fileExtra = FileExtra(analyseType=AnalyseFileType.Analysed, oppositeID=oriFileID),
+        )
+        analysedFileInfo.save()
+        oriFile.fileExtra = FileExtra(analyseType=AnalyseFileType.Origin, oppositeID=analysedFileInfo.id)
+        oriFile.save()
+
     def createFolder(self, pid: int, userID: int):
         files = super().filter(user_id=userID, file_pid=pid)
         parentPath = ""
@@ -117,11 +132,11 @@ class FileInfoManager(models.Manager):
         return filename
 
     def ResolveFolderID(self, userID: int, folderID: int):
-        if folderID == SystemFolder.AnalyseFolder.value:
-            analyseFolder = super().filter(user_id=userID, folder_type=SystemFolder.AnalyseFolder.value)
+        if folderID == SystemFolder.OnlineAnalyseFolder.value:
+            analyseFolder = super().filter(user_id=userID, folder_type=SystemFolder.OnlineAnalyseFolder.value)
             if analyseFolder.count() == 0:
                 analyseFolder = self.createFolder(SystemFolder.Root.value, userID)
-                analyseFolder.folder_type = SystemFolder.AnalyseFolder.value
+                analyseFolder.folder_type = SystemFolder.OnlineAnalyseFolder.value
                 analyseFolder.filename = self.autoRename(SystemFolder.Root.value, "在线分析文件夹", userID)
                 analyseFolder.save()
             else:

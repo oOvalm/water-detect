@@ -42,4 +42,5 @@ class FileType(Enum):
 
 class SystemFolder(Enum):
     Root = -1
-    AnalyseFolder = -2
+    OnlineAnalyseFolder = -2
+    AnalysedFolder = -3

@@ -51,6 +51,7 @@ def execute_command(cmd, outprint_log=False):
 
     process = None
     try:
+
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         error_stream = PrintStream(process.stderr)

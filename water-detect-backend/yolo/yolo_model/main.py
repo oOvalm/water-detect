@@ -8,6 +8,10 @@ from moviepy import VideoFileClip
 
 from common_service import redis
 from waterDetect import settings
+
+USE_MOCK = True
+
+
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
 VIDEO_PATH = os.path.join(settings.MEDIA_ROOT, 'videos')
@@ -17,7 +21,16 @@ YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\water-detect-backen
 model = YOLO(YOLO_MODEL_PATH)
 logger = logging.getLogger(__name__)
 
+def GetFromModel_Mock(path: str, destFolderName: str, projFolderName: str):
+    oriFileName = path.split('\\')[-1].split('.')[0]
+    tmp = os.path.join(BASE_TMP, projFolderName, destFolderName)
+    os.makedirs(tmp)
+    ts_to_avi(path, os.path.join(tmp, f'{oriFileName}.avi'))
+
 def GetFromModel(path: str, destFolderName: str, projFolderName: str):
+    if USE_MOCK:
+        GetFromModel_Mock(path, destFolderName, projFolderName)
+        return
     # 使用模型对视频文件进行预测，并保存结果
     results = model.predict(source=path, save=True,
                             project=os.path.join(BASE_TMP, projFolderName),
@@ -69,7 +82,7 @@ def AnalyseVideo(path: str, fileUID: str):
     videoFilePath = os.path.join(VIDEO_PATH, f"analysed_{fileUID}.mp4")
     merge_ts_files(destFolder, videoFilePath)
     FileManager().CreateThumbnail(videoFilePath, f"analysed_{fileUID}")
-    return destFolder
+    return f"analysed_{fileUID}", FileManager().GetFileSize(videoFilePath)
 
 def resolveDoneVideo(videoPath, destFolder, filename):
     avi_to_ts(videoPath, os.path.join(destFolder, f"{filename}.ts"))
@@ -87,7 +100,18 @@ def avi_to_ts(input_file, output_file):
     clip.write_videofile(output_file, codec='libx264', audio_codec='aac')
     # 关闭视频剪辑对象以释放资源
     clip.close()
-    print('avi done')
+
+def ts_to_avi(input_file, output_file):
+    try:
+        # 加载 .ts 视频文件
+        clip = VideoFileClip(input_file)
+        # 将视频保存为 .avi 格式
+        clip.write_videofile(output_file, codec='mpeg4')
+        # 关闭视频剪辑对象
+        clip.close()
+        print(f"成功将 {input_file} 转换为 {output_file}")
+    except Exception as e:
+        print(f"转换过程中出现错误: {e}")
 
 def merge_ts_files(input_folder, output_file):
     """

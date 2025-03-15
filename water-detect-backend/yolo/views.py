@@ -1,3 +1,5 @@
+from enum import Enum
+
 from rest_framework.views import APIView
 
 from common.customResponse import NewErrorResponse, NewSuccessResponse
@@ -7,6 +9,12 @@ from database.models import FileInfo
 
 
 # Create your views here.
+class AnalyseStatus(Enum):
+    NotStart = 1
+    Analysing = 2
+    Done = 3
+
+
 class GetAnalyseProcess(APIView):
     def get(self, request, fileUID):
         userID = request.user.id
@@ -19,9 +27,13 @@ class GetAnalyseProcess(APIView):
         if extra.oppositeID != 0:
             return NewSuccessResponse({
                 "fileUID": fileUID,
-                "done": True,
-
+                "analyseStatus":AnalyseStatus.Done.value,
             })
         analyseProcess = redis.GetAnalyseProcess(fileUID)
-        analyseProcess['done'] = False
+        if analyseProcess is None:
+            return NewSuccessResponse({
+                "fileUID": fileUID,
+                "analyseStatus":AnalyseStatus.NotStart.value,
+            })
+        analyseProcess['analyseStatus'] = AnalyseStatus.Analysing.value
         return NewSuccessResponse(analyseProcess)

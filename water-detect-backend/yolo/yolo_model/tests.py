@@ -20,5 +20,8 @@ def TestMergeTs2Mp4():
     target = r'D:\coding\graduation-design\water-detect\media\videos\analysed_xxx.mp4'
     merge_ts_files(folder, target)
 
+def TestTs2Avi():
+    pass
+
 if __name__ == '__main__':
     TestMergeTs2Mp4()

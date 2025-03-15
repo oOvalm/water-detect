@@ -29,10 +29,12 @@ def initYoloConsumer():
     channel.start_consuming()
 
 logger = logging.getLogger(__name__)
-
+SKIP = True
 def consumeHandler(ch, method, properties, body):
     from database.models import FileInfo
     from common_service.fileService import FileManager
+    if SKIP:
+        return
     try:
         bodyDict = json.loads(body)
         mqInfo = AnalyseTask(**bodyDict)
@@ -48,7 +50,8 @@ def consumeHandler(ch, method, properties, body):
 
 
         if mqInfo.fileType == FileType.Video.value:
-            AnalyseVideo(tsFolder, mqInfo.fileUID)
+            analysedUID, size = AnalyseVideo(tsFolder, mqInfo.fileUID)
+            FileInfo.objects.createAnalysedFile(mqInfo.fileID, analysedUID, size)
         else:
             logger.error(f"not support file type {mqInfo.fileType}")
     except Exception as e:

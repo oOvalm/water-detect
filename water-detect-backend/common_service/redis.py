@@ -16,4 +16,7 @@ def UploadAnalyseProcess(fileUID, **kwargs):
 
 def GetAnalyseProcess(fileUID):
     raw = cache.get(f"upload-analyse-process:{fileUID}")
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except Exception:
+        return None

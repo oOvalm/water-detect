@@ -1,4 +1,6 @@
 import os
+import subprocess
+
 from PIL import Image
 import logging
 
@@ -91,21 +93,23 @@ def cut_files(srcFilePath: str, destFolderPath: str, filename: str):
         settings.FFMPEG_PATH,
         "-i", tsPath,
         "-c", "copy", "-map", "0", "-f", "segment", "-segment_list", m3u8Path,
-        "-segment_time", "5", f"{destFolderPath}/{filename}_%06d.ts"
+        "-segment_time", "30", f"{destFolderPath}/{filename}_%04d.ts"
     ]
     print(' '.join(CMD_TRANSFER_2TS))
     print(' '.join(CMD_CUT_TS))
 
     # 生成 .ts 文件
     try:
-        execute_command(CMD_TRANSFER_2TS)
+        subprocess.run(CMD_TRANSFER_2TS)
+        # execute_command(CMD_TRANSFER_2TS)
     except Exception as e:
         print(f"执行生成 .ts 文件的命令时出错: {e}")
         return
 
     # 生成索引文件 .m3u8 和切片 .ts
     try:
-        execute_command(CMD_CUT_TS)
+        subprocess.run(CMD_CUT_TS)
+        # execute_command(CMD_CUT_TS)
     except Exception as e:
         print(f"执行生成 .m3u8 和切片 .ts 文件的命令时出错: {e}")
         return

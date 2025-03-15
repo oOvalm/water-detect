@@ -22,5 +22,6 @@ urlpatterns = [
     path('account/', include('account.urls')),
     path('captcha/', include('captcha.urls')),
     path('directory/', include('directory.urls')),
-    path('selfTest/', include('self_test.urls'))
+    path('selfTest/', include('self_test.urls')),
+    path('analyse/', include('yolo.urls')),
 ]

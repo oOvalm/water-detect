@@ -168,6 +168,11 @@ class LocalFileService(fileServiceABC):
         else:
             raise ParamError("todo!!")
 
+    def GetFileSize(self, filePath):
+        # 获取路径下文件大小
+        return os.path.getsize(filePath)
+
+
 _fileManager = None
 once = threading.Lock()
 def FileManager() -> LocalFileService:
