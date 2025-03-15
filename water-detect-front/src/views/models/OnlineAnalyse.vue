@@ -4,6 +4,7 @@
       <el-button type="primary" @click="uploadRTSPStream">RTSP流</el-button>
       <el-button type="success" @click="startAnalysis">开始分析</el-button>
     </div>
+    <el-progress :percentage="analyseProgress" type="circle"></el-progress>
   </div>
   <div class="box" ref="doubleVideoRef" v-if="fileInfo.id">
     <div class="left" ref="leftRef">
@@ -13,7 +14,8 @@
       <div class="dots">⋮</div>
     </div>
     <div class="right" ref="rightRef">
-      <PreviewVideo :url="analysedUrl"></PreviewVideo>
+      <PreviewVideo v-if="analyseStatus >= 2" :url="analysedUrl"></PreviewVideo>
+      <loading v-else></loading>
     </div>
   </div>
   <div v-else>
@@ -42,20 +44,28 @@
 import {ref, onMounted, onUnmounted, watch, nextTick} from 'vue';
 import message from "@/utils/Message.js";
 import httpRequest from "@/api/httpRequest.ts";
-import {UploadFilled} from "@element-plus/icons-vue";
+import {Loading, UploadFilled} from "@element-plus/icons-vue";
 import Preview from "@/components/preview/Preview.vue";
 import PreviewVideo from "@/components/preview/PreviewVideo.vue";
 
 const emit = defineEmits(["addFile"]);
-const fileInfo = ref({});
+const fileInfo = ref({}); // 原始文件信息
 
-const originRef = ref();
-const analysedRef = ref();
+// html组件ref, 加listener的
 const splitterRef = ref();
 const leftRef = ref();
 const rightRef = ref();
 const doubleVideoRef = ref();
-const originUrl = ref();
+
+// 两个视频路径
+const originUrl = ref("");
+const analysedUrl = ref("");
+
+// 分析进度
+const analyseStatus = ref(0);
+const analyseProgress = ref(0);
+
+let timer = null;
 
 const uploadRTSPStream = () => {
   message.error('todo');
@@ -67,14 +77,38 @@ const startAnalysis = () => {
 const uploadFile = async (fileData) => {
   emit("addFile", {file: fileData.file, filePid: -2});
 }
+
+const fetchProcess = () => {
+  if (fileInfo.value.file_uid) {
+    httpRequest.get(`/analyse/getAnalyseProcess/${fileInfo.value.file_uid}`).then(({data}) => {
+      if (data.code !== 0) return
+      data = data.data;
+      analyseStatus.value = data.analyseStatus
+      if (analyseStatus.value === 3) {
+        analyseProgress.value = 100;
+      } else if (analyseStatus.value === 2) {
+        analyseProgress.value = data.finished / data.total * 100;
+      } else {
+        analyseProgress.value = 0;
+      }
+    })
+
+  }
+}
+
 const uploadDone = ({fileUID}) => {
   httpRequest.get(`/directory/FileInfo/uid/${fileUID}`).then(({data}) => {
     if (data.code == null || data.code !== 0) {
       throw new Error(data.msg);
     }
-    fileInfo.value = data.data;
     originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}`;
-    originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}?analysed=true`;
+
+    console.log(originUrl.value);
+    fileInfo.value = data.data;
+    // originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}?analysed=true`;
+    timer = setInterval(() => {
+      fetchProcess()
+    }, 100000)
     // console.log(originRef)
     // originRef.value.showPreview(fileInfo, 0);
     console.log(fileInfo.value);
@@ -149,7 +183,12 @@ const removeListener = () => {
 //   addListener()
 // });
 
-onUnmounted(removeListener);
+onUnmounted(() => {
+  removeListener();
+  if (timer) {
+    clearInterval(timer);
+  }
+});
 
 </script>
 

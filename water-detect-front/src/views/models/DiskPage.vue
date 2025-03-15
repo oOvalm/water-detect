@@ -191,6 +191,7 @@ const columns = [
     label: "文件名",
     prop: "filename",
     scopedSlots: "filename",
+    width: 500,
   },
   {
     label: "修改时间",

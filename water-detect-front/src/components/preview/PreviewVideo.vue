@@ -4,10 +4,8 @@
 
 <script setup>
 import DPlayer from "dplayer";
-import {nextTick, onMounted, ref, getCurrentInstance} from "vue";
+import {nextTick, onMounted, ref} from "vue";
 import Hls from "hls.js";
-
-const {proxy} = getCurrentInstance();
 
 const props = defineProps({
   url: {
@@ -19,14 +17,13 @@ const videoInfo = ref({
   video: null,
 });
 
-const player = ref();
+const player = ref(null);
 const initPlayer = () => {
   const dp = new DPlayer({
     element: player.value,
     theme: "#b7daff",
     screenshot: true,
     video: {
-      //  pic: videoInfo.img, // 封面
       url: `/api${props.url}`,
       type: "customHls",
       customType: {
@@ -38,12 +35,13 @@ const initPlayer = () => {
       },
     },
   });
-  dp.seek(30);
-  dp.seek(10);
+  // dp.seek(10);
 };
 
 onMounted(() => {
-  initPlayer();
+  nextTick(() => {
+    initPlayer();
+  });
 });
 </script>
 
@@ -51,7 +49,7 @@ onMounted(() => {
 #player {
   width: 100%;
 
-  :deep .dplayer-video-wrap {
+  :deep.dplayer-video-wrap {
     text-align: center;
 
     .dplayer-video {

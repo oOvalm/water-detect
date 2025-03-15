@@ -222,16 +222,30 @@ class GetFileView(APIView):
             # fileID根据下划线分隔
             fileUID = fileID.split('_')[0]
             path = FileManager().GetTSPath(fileUID, fileID)
+            file = open(path, 'rb')
+            return FileResponse(file, content_type="video/MP2T")
         else:
             fileInfo = FileInfo.objects.get(id=fileID)
             if fileInfo.file_type == FileType.Video.value:
                 path = FileManager().GetM3U8Path(fileInfo.file_uid)
+                file = open(path, 'rb')
+                return FileResponse(file)
             else:
-                return NewErrorResponse("todo file type")
+                return NewErrorResponse(400, "todo file type")
+
+class GetM3U8View(APIView):
+    def get(self, request, fileID):
+        fileInfo = FileInfo.objects.get(id=fileID)
+        path = ""
+        if fileInfo.file_type == FileType.Video.value:
+            path = FileManager().GetM3U8Path(fileInfo.file_uid)
+        else:
+            return NewErrorResponse(400, "todo file type")
         if path == "":
             raise InternalServerError
         file = open(path, 'rb')
         return FileResponse(file)
+
 
 class DownloadFileView(APIView):
     def get(self, request, fileID):
