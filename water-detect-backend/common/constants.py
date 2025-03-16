@@ -8,7 +8,7 @@ YEAR = DAY * 365
 
 INTERNAL_ERROR = "internal server error"
 
-VIDEO_COVER_WIDTH = 150
+COVER_WIDTH = 150
 THUMBNAIL_FILE_TYPE = "png"
 
 class UploadFileStatus(Enum):

@@ -1,21 +1,47 @@
 <template>
   <div class="top">
     <div class="top-op">
-      <el-button type="primary" @click="uploadRTSPStream">RTSP流</el-button>
-      <el-button type="success" @click="startAnalysis">开始分析</el-button>
+      <el-button class="btn" type="primary" @click="uploadRTSPStream">RTSP流</el-button>
+      <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>
+      <el-progress type="dashboard" :percentage="analyseProgress" v-if="fileInfo.id">
+        <template #default="{ percentage }">
+          <span class="percentage-value">{{ percentage }}%</span>
+          <span class="percentage-label">分析进度</span>
+        </template>
+      </el-progress>
     </div>
-    <el-progress :percentage="analyseProgress" type="circle"></el-progress>
   </div>
   <div class="box" ref="doubleVideoRef" v-if="fileInfo.id">
     <div class="left" ref="leftRef">
-      <PreviewVideo :url="originUrl"></PreviewVideo>
+      <PreviewVideo ref="player1Ref" v-if="originStatus === 0" :url="originUrl"
+                    @play="()=>{syncVideo('play', 1)}"
+                    @pause="()=>{syncVideo('pause', 1)}"
+                    @seeked="(newTime) => {syncVideo('seeked', 1, {newTime: newTime})}"
+      ></PreviewVideo>
+      <div class="loading" v-else>
+        <el-icon class="is-loading" v-if="originStatus === 1">
+          <Loading/>
+        </el-icon>
+        <el-icon color="red" v-else>
+          <WarningFilled/>
+        </el-icon>
+        <input type="text" :value="originStatus === 1 ? '视频转码中' : '转码失败'"/>
+      </div>
     </div>
     <div class="resize" ref="splitterRef" title="分界线">
       <div class="dots">⋮</div>
     </div>
     <div class="right" ref="rightRef">
-      <PreviewVideo v-if="analyseStatus >= 2" :url="analysedUrl"></PreviewVideo>
-      <loading v-else></loading>
+      <PreviewVideo ref="player2Ref" v-if="isShowAnalysedVideo()" :url="analysedUrl"
+                    @play="()=>{syncVideo('play', 2)}"
+                    @pause="()=>{syncVideo('pause', 2)}"
+                    @seeked="(newTime) => {syncVideo('seeked', 2, {newTime: newTime})}"
+      ></PreviewVideo>
+      <div class="loading" v-else>
+        <el-icon class="is-loading">
+          <Loading/>
+        </el-icon>
+      </div>
     </div>
   </div>
   <div v-else>
@@ -44,23 +70,30 @@
 import {ref, onMounted, onUnmounted, watch, nextTick} from 'vue';
 import message from "@/utils/Message.js";
 import httpRequest from "@/api/httpRequest.ts";
-import {Loading, UploadFilled} from "@element-plus/icons-vue";
+import {Loading, UploadFilled, WarningFilled} from "@element-plus/icons-vue";
 import Preview from "@/components/preview/Preview.vue";
 import PreviewVideo from "@/components/preview/PreviewVideo.vue";
+import {useRoute} from "vue-router";
 
 const emit = defineEmits(["addFile"]);
 const fileInfo = ref({}); // 原始文件信息
+
+const route = useRoute();
+const uploadedID = route.query.id;
 
 // html组件ref, 加listener的
 const splitterRef = ref();
 const leftRef = ref();
 const rightRef = ref();
 const doubleVideoRef = ref();
+const player1Ref = ref();
+const player2Ref = ref();
 
 // 两个视频路径
 const originUrl = ref("");
 const analysedUrl = ref("");
 
+const originStatus = ref(1);
 // 分析进度
 const analyseStatus = ref(0);
 const analyseProgress = ref(0);
@@ -74,44 +107,75 @@ const startAnalysis = () => {
   message.error('todo');
 };
 
+const syncVideo = (op, srcPlayerID, extra) => {
+  let destPlayer = null;
+  if (srcPlayerID === 1) destPlayer = player2Ref.value
+  else destPlayer = player1Ref.value
+  if (op === 'play') {
+    destPlayer.playVideo();
+  } else if (op === 'pause') {
+    destPlayer.pauseVideo();
+  } else if (op === 'seeked') {
+    const newTime = extra.newTime
+    destPlayer.seekVideo(newTime);
+  }
+}
+
 const uploadFile = async (fileData) => {
   emit("addFile", {file: fileData.file, filePid: -2});
 }
 
+const isShowAnalysedVideo = () => {
+  return analyseStatus.value === 2 || analyseStatus.value === 3
+}
+
 const fetchProcess = () => {
-  if (fileInfo.value.file_uid) {
+  if (originStatus.value === 1) {
+    httpRequest.get(`/directory/FileInfo/id/${fileInfo.value.id}`).then(({data}) => {
+      if (data.code !== 0) return
+      fileInfo.value = data.data;
+      originStatus.value = fileInfo.value.file_status
+      if (originStatus.value === 0) {
+        originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}`;
+      }
+    })
+  }
+
+
+  if (analyseStatus.value !== 3) {
     httpRequest.get(`/analyse/getAnalyseProcess/${fileInfo.value.file_uid}`).then(({data}) => {
       if (data.code !== 0) return
       data = data.data;
       analyseStatus.value = data.analyseStatus
       if (analyseStatus.value === 3) {
+        analysedUrl.value = `/directory/ts/getVideoInfo/${fileInfo.value.id}?analysed=true`;
         analyseProgress.value = 100;
       } else if (analyseStatus.value === 2) {
+        analysedUrl.value = `/directory/ts/getVideoInfo/${fileInfo.value.id}?analysed=true`;
         analyseProgress.value = data.finished / data.total * 100;
       } else {
         analyseProgress.value = 0;
       }
     })
-
   }
 }
 
-const uploadDone = ({fileUID}) => {
-  httpRequest.get(`/directory/FileInfo/uid/${fileUID}`).then(({data}) => {
+const uploadDone = ({fileUID, ty, fileID}) => {
+  let url = ''
+  if (ty === 'id') {
+    url = `/directory/FileInfo/id/${fileID}`
+  } else {
+    url = `/directory/FileInfo/uid/${fileUID}`
+  }
+  httpRequest.get(url).then(({data}) => {
     if (data.code == null || data.code !== 0) {
       throw new Error(data.msg);
     }
-    originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}`;
-
-    console.log(originUrl.value);
     fileInfo.value = data.data;
-    // originUrl.value = `/directory/ts/getVideoInfo/${data.data.id}?analysed=true`;
+    fetchProcess()
     timer = setInterval(() => {
       fetchProcess()
-    }, 100000)
-    // console.log(originRef)
-    // originRef.value.showPreview(fileInfo, 0);
-    console.log(fileInfo.value);
+    }, 5000)
   }).catch((e) => {
     console.log(e)
   })
@@ -179,9 +243,15 @@ const removeListener = () => {
   }
 }
 
-// onMounted(() => {
-//   addListener()
-// });
+onMounted(() => {
+  if (uploadedID) {
+    console.log(uploadedID)
+    uploadDone({
+      ty: 'id',
+      fileID: uploadedID
+    })
+  }
+});
 
 onUnmounted(() => {
   removeListener();
@@ -281,5 +351,24 @@ onUnmounted(() => {
   height: 100%;
   background: #fff;
   box-shadow: -1px 4px 5px 3px rgba(0, 0, 0, 0.11);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 100px;
+}
+
+.percentage-value {
+  display: block;
+  margin-top: 10px;
+  font-size: 28px;
+}
+
+.percentage-label {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
 }
 </style>

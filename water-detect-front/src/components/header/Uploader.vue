@@ -211,7 +211,7 @@ const addFile = async (file, filePid) => {
     return;
   }
   uploadFile(md5FileUid);
-  emit("uploadDone", );
+  emit("uploadDone",);
 };
 defineExpose({addFile});
 
@@ -264,7 +264,7 @@ const uploadFile = async (uid, chunkIndex) => {
     formData.append('chunks', chunks);
     formData.append('fileId', currentFile.fileId);
     formData.append('filePid', currentFile.filePid);
-    let uploadResult = await httpRequest.post("/directory/video/v2", formData, {
+    let uploadResult = await httpRequest.post("/directory/upload", formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -307,7 +307,7 @@ const uploadFile = async (uid, chunkIndex) => {
         uploadResult.data.status === STATUS.upload_finish.value
     ) {
       currentFile.uploadProgress = 100;
-      emit("uploadCallback", {fileUID: currentFile.fileId, file:currentFile.file});
+      emit("uploadCallback", {fileUID: currentFile.fileId, file: currentFile.file});
       break;
     }
   }

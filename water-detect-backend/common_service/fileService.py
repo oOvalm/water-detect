@@ -7,30 +7,30 @@ from abc import ABC, abstractmethod
 from common import ScaleFilter, constants
 from common.customError import ParamError
 from common.db_model import FileType
+from database.models import FileInfo
 from waterDetect import settings
 
 
+fileTypeSuffixMap = {
+    FileType.Video.value: ["mp4","avi","rmvb","mkv","mov"],
+    FileType.Image.value: ["jpeg","jpg","png","gif","bmp","dds","psd","pdt","webp","xmp","svg","tiff"]
+}
 
-class fileServiceABC(ABC):
-    @abstractmethod
-    def uploadVideo(self, file)->str:
-        pass
-    @abstractmethod
-    def getVideo(self, fileID):
-        pass
-    @abstractmethod
-    def uploadVideoChunk(self, fileID, chunkIndex, chunk):
-        pass
-    @abstractmethod
-    def getThumbnailPath(self, fileUID):
-        pass
-    @abstractmethod
-    def DeleteFile(self, fileUID):
-        pass
+def GetFileSuffix(filename):
+    return filename.split('.')[-1]
 
-class LocalFileService(fileServiceABC):
+
+def GetFileTypeBySuffix(filename):
+    suffix = GetFileSuffix(filename)
+    for fileType, suffixList in fileTypeSuffixMap.items():
+        if suffix in suffixList:
+            return fileType
+
+
+
+class LocalFileService():
     folders = [
-        'videos',
+        'files',
         'thumbnail',
         'tmp',
         'cuts',
@@ -40,22 +40,23 @@ class LocalFileService(fileServiceABC):
             if not os.path.exists(os.path.join(settings.MEDIA_ROOT, folder)):
                 os.makedirs(os.path.join(settings.MEDIA_ROOT, folder))
 
-    def uploadVideo(self, video_file):
-        upload_dir = os.path.join(settings.MEDIA_ROOT, 'videos')
-        if not os.path.exists(upload_dir):
-            os.makedirs(upload_dir)
-        fileID = uuid.uuid4().__str__()
-        file_path = os.path.join(upload_dir, fileID)
-        with open(file_path, 'wb+') as destination:
-            for chunk in video_file.chunks():
-                destination.write(chunk)
-        return fileID
+    # def uploadVideo(self, video_file):
+    #     upload_dir = os.path.join(settings.MEDIA_ROOT, 'files')
+    #     if not os.path.exists(upload_dir):
+    #         os.makedirs(upload_dir)
+    #     fileID = uuid.uuid4().__str__()
+    #     file_path = os.path.join(upload_dir, fileID)
+    #     with open(file_path, 'wb+') as destination:
+    #         for chunk in video_file.chunks():
+    #             destination.write(chunk)
+    #     return fileID
 
     def uploadVideoChunk(self, *args, **kwargs):
         fileID = kwargs['file_id']
         index = kwargs['chunk_index']
         chunks = kwargs['chunks']
         file = kwargs['file']
+        filename = kwargs['filename']
         if fileID == 'undefined':
             fileID = uuid.uuid4().__str__()
         upload_dir = os.path.join(settings.MEDIA_ROOT, 'tmp')
@@ -65,11 +66,12 @@ class LocalFileService(fileServiceABC):
             os.makedirs(os.path.join(upload_dir, fileID))
         with open(os.path.join(upload_dir, fileID, f'{index}'), 'wb+') as destination:
             destination.write(file.read())
-        done = False
-        totSize = 0
+        done, totSize, fileType = False, 0, None
         if index+1 == chunks:
+            fileSuffix = GetFileSuffix(filename)
+            fileType = GetFileTypeBySuffix(filename)
             file_path = os.path.join(upload_dir, fileID)
-            target_path = os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileID}.mp4")
+            target_path = os.path.join(settings.MEDIA_ROOT, 'files', f"{fileID}.{fileSuffix}")
             with open(target_path, 'wb+') as destination:
                 for i in range(chunks):
                     with open(os.path.join(file_path, f'{i}'), 'rb') as source:
@@ -80,46 +82,52 @@ class LocalFileService(fileServiceABC):
                 os.remove(os.path.join(file_path, f'{i}'))
             os.rmdir(file_path)
             done = True
-        if done:
-            self.CreateThumbnail(f'{settings.MEDIA_ROOT}/videos/{fileID}.mp4', fileID)
-            self._cutFile4Video(fileID)
-            # 视频切片
-        return fileID, totSize, done
+        return fileID, totSize, fileType, done
 
-    def CreateThumbnail(self, videoPath, fileUID):
-        thumbnailPath = f'{settings.MEDIA_ROOT}/thumbnail/{fileUID}.{constants.THUMBNAIL_FILE_TYPE}'
-        ScaleFilter.create_cover4video(
-            videoPath,
-            constants.VIDEO_COVER_WIDTH,
-            thumbnailPath,
-        )
+    def CreateThumbnail(self, filePath, fileUID, fileType):
+        thumbnailPath = ""
+        if fileType == FileType.Video.value:
+            thumbnailPath = f'{settings.MEDIA_ROOT}/thumbnail/{fileUID}.{constants.THUMBNAIL_FILE_TYPE}'
+            ScaleFilter.create_cover4video(
+                filePath,
+                constants.COVER_WIDTH,
+                thumbnailPath,
+            )
+        elif fileType == FileType.Image.value:
+            thumbnailPath = f'{settings.MEDIA_ROOT}/thumbnail/{fileUID}.{constants.THUMBNAIL_FILE_TYPE}'
+            ScaleFilter.compress_image(
+                filePath,
+                constants.COVER_WIDTH,
+                thumbnailPath,
+                False
+            )
         return thumbnailPath
 
-    def getVideo(self, fileID):
-        upload_dir = os.path.join(settings.MEDIA_ROOT, 'videos')
-        file_path = os.path.join(upload_dir, f"{fileID}.mp4")
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, 'rb') as file:
-                    video_content = file.read()
-                return video_content
-            except Exception as e:
-                print(f"Error reading the video file: {e}")
-        else:
-            print(f"Video file with ID {fileID} not found.")
-        return None
+    # def getVideo(self, fileID):
+    #     upload_dir = os.path.join(settings.MEDIA_ROOT, 'files')
+    #     file_path = os.path.join(upload_dir, f"{fileID}.mp4")
+    #     if os.path.exists(file_path):
+    #         try:
+    #             with open(file_path, 'rb') as file:
+    #                 video_content = file.read()
+    #             return video_content
+    #         except Exception as e:
+    #             print(f"Error reading the video file: {e}")
+    #     else:
+    #         print(f"Video file with ID {fileID} not found.")
+    #     return None
 
 
-    def DeleteFile(self, fileUID):
+    def DeleteFile(self, fileInfo: FileInfo):
+        fileUID = fileInfo.file_uid
         removeFiles = [
-            os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileUID}.mp4"),
-            os.path.join(settings.MEDIA_ROOT, 'video', f"analysed_{fileUID}.mp4"),
+            os.path.join(settings.MEDIA_ROOT, 'files', f"{fileInfo.UIDFilename()}"),
             os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}"),
-            os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"analysed_{fileUID}.{constants.THUMBNAIL_FILE_TYPE}"),
+            # os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"analysed_{fileUID}.{constants.THUMBNAIL_FILE_TYPE}"),
         ]
         removeFolders = [
             os.path.join(settings.MEDIA_ROOT, 'cuts', f"{fileUID}"),
-            os.path.join(settings.MEDIA_ROOT, 'cuts', f"analysed_{fileUID}")
+            # os.path.join(settings.MEDIA_ROOT, 'cuts', f"analysed_{fileUID}")
         ]
         for path in removeFiles:
             if os.path.exists(path):
@@ -130,8 +138,9 @@ class LocalFileService(fileServiceABC):
 
 
 
-    def _cutFile4Video(self, fileUID: str):
-        file_path = os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileUID}.mp4")
+    def cutFile4Video(self, fileInfo: FileInfo):
+        fileUID = fileInfo.file_uid
+        file_path = os.path.join(settings.MEDIA_ROOT, 'files', f"{fileInfo.UIDFilename()}")
         # 创建同名切片目录
         tsFolder = os.path.join(settings.MEDIA_ROOT, 'cuts', fileUID)
         if not os.path.exists(tsFolder):
@@ -146,25 +155,26 @@ class LocalFileService(fileServiceABC):
         return self._getFilePath(fileUID, "ts", tsName=tsName)
     def getThumbnailPath(self, fileUID):
         return self._getFilePath(fileUID, "thumbnail")
-    def GetFilePath(self, fileUID, fileType):
+    def GetFilePath(self, fileInfo, fileType):
+        fileUID = fileInfo.file_uid
+        fileSuffix = GetFileSuffix(fileInfo.filename)
         if fileType == FileType.Video.value:
-            return self._getFilePath(fileUID, "video")
+            return self._getFilePath(fileUID, "video", suffix=fileSuffix)
         elif fileType == FileType.Image.value:
-            return self._getFilePath(fileUID, "image")
+            return self._getFilePath(fileUID, "image", suffix=fileSuffix)
         else:
             raise ValueError(f"Invalid file type: {fileType}")
     def _getFilePath(self, fileUID: str, fileType: str, *args, **kwargs):
         tsName = kwargs.get('tsName')
-        if fileType == "video":
-            return os.path.join(settings.MEDIA_ROOT, 'videos', f"{fileUID}.mp4")
+        suffix = kwargs.get('suffix')
+        if fileType == "video" or fileType == "image":
+            return os.path.join(settings.MEDIA_ROOT, 'files', f"{fileUID}.{suffix}")
         elif fileType == "ts":
             return os.path.join(settings.MEDIA_ROOT, 'cuts', fileUID, tsName)
         elif fileType == "m3u8":
             return os.path.join(settings.MEDIA_ROOT, 'cuts', fileUID, 'index.m3u8')
         elif fileType == "thumbnail":
             return os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{fileUID}.{constants.THUMBNAIL_FILE_TYPE}")
-        elif fileType == "image":
-            raise ParamError("todo!!")
         else:
             raise ParamError("todo!!")
 
@@ -181,3 +191,5 @@ def FileManager() -> LocalFileService:
         if _fileManager is None:
             _fileManager = LocalFileService()
         return _fileManager
+
+

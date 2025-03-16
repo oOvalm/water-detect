@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import threading
 import uuid
 
 from django.core.cache import cache
@@ -11,39 +13,41 @@ from rest_framework.views import APIView
 from common import constants
 from common.constants import UploadFileStatus
 from common.customError import InternalServerError, ParamError
-from common.db_model import FileType
+from common.db_model import FileType, FileStatus
 from common.mqModels import AnalyseTask
 from common.customResponse import NewSuccessResponse, NewErrorResponse
 from common_service.fileService import FileManager
 from database.models import FileInfo
+from directory import utils
 from directory.forms import GetFileListForm
 from directory.serializers import FileInfoSerializer
 from directory.service import mq
+from waterDetect import settings
 
 logger = logging.getLogger(__name__)
 # Create your views here.
-class VideoView(APIView):
-    def post(self, request):
-        # 获取上传的文件
-        video_file = request.FILES.get('video')
-        if video_file:
-            fileID = FileManager().uploadVideo(video_file)
-            opUser = request.user
-            video = FileInfo.objects.createVideo(video_file, fileID, opUser)
-            return NewSuccessResponse({"fileID": video.id})
-        else:
-            return NewErrorResponse(400, "not file uploaded")
+# class VideoView(APIView):
+#     def post(self, request):
+#         # 获取上传的文件
+#         video_file = request.FILES.get('video')
+#         if video_file:
+#             fileID = FileManager().uploadVideo(video_file)
+#             opUser = request.user
+#             video = FileInfo.objects.createVideo(video_file, fileID, opUser)
+#             return NewSuccessResponse({"fileID": video.id})
+#         else:
+#             return NewErrorResponse(400, "not file uploaded")
+#
+#     def get(self, request):
+#         uid = request.GET.get('uid')
+#         video = FileInfo.objects.get(file_uid=uid, user_id=request.user.id)
+#         videoFile = FileManager().getVideo(video.file_uid)
+#         response = Response(videoFile, content_type='directory/mp4')
+#         response['Content-Disposition'] = f'attachment; filename={video.filename}'
+#         return response
 
-    def get(self, request):
-        uid = request.GET.get('uid')
-        video = FileInfo.objects.get(file_uid=uid, user_id=request.user.id)
-        videoFile = FileManager().getVideo(video.file_uid)
-        response = Response(videoFile, content_type='directory/mp4')
-        response['Content-Disposition'] = f'attachment; filename={video.filename}'
-        return response
 
-
-class VideoV2View(APIView):
+class UploadView(APIView):
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
         file_name = request.data.get('fileName')
@@ -65,37 +69,48 @@ class VideoV2View(APIView):
 
         file_pid = FileInfo.objects.ResolveFolderID(request.user.id, file_pid)
 
-        file_id, fileSize, done = FileManager().uploadVideoChunk(
+        file_id, fileSize, fileType, done = FileManager().uploadVideoChunk(
             file=file,
             chunk_index=chunk_index,
             chunks=chunks,
             file_id=file_id,
+            filename=file_name
         )
         status = UploadFileStatus.uploading.value
         if done:
             parentFile_path = FileInfo.objects.getFilePath(file_pid)
             file_name = FileInfo.objects.autoRename(file_pid, file_name, request.user.id)
-
             fileInfo = FileInfo.objects.create(
                 file_pid=file_pid,
                 file_uid=file_id,
                 size=fileSize,
                 file_path=parentFile_path + '/' + file_name,
-                file_type=FileType.Video.value,
+                file_type=fileType,
                 filename=file_name,
                 user_id=request.user.id,
+                file_status=FileStatus.Converting.value,
             )
-            mq.sendAnalyseTask(AnalyseTask(fileInfo.id, fileInfo.file_type, fileInfo.file_uid))
+            fileInfo.save()
+            FileManager().CreateThumbnail(f'{settings.MEDIA_ROOT}/files/{fileInfo.UIDFilename()}', fileInfo.file_uid, fileInfo.file_type)
+            threading.Thread(target=self.AsyncResolveFile, args=(fileInfo, request.user.id)).start()
             status = UploadFileStatus.upload_finish.value
 
-
-        # uploaded_file.save()
-
-        # serializer = UploadedFileSerializer(uploaded_file)
         return NewSuccessResponse({
             "fileId": file_id,
             "status": status,
         })
+    def AsyncResolveFile(self, fileInfo, userID):
+        try:
+            if fileInfo.file_type == FileType.Video.value:
+                FileManager().cutFile4Video(fileInfo)
+            fileInfo.file_status = FileStatus.Done.value
+            fileInfo.save()
+        except Exception as e:
+            logger.error("AsyncResolveVideo", e)
+            fileInfo.file_status = FileStatus.ConvertFailed.value
+            fileInfo.save()
+        mq.sendAnalyseTask(AnalyseTask(fileInfo.id, fileInfo.file_type, fileInfo.file_uid))
+
 
 class FilePagination(PageNumberPagination):
     page_size_query_param = 'pageSize'
@@ -137,7 +152,7 @@ class FileListView(APIView):
     def post(self, request):
         body = json.loads(request.body)
         pid = body['filePid']
-        FileInfo.objects.createFolder(pid, request.user.id)
+        FileInfo.objects.createFolder(int(pid), request.user.id)
         return NewSuccessResponse()
 
     def put(self, request):
@@ -176,7 +191,7 @@ class FileListView(APIView):
             raise ParamError("No valid file IDs provided")
         files = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id)
         for file in files:
-            FileManager().DeleteFile(file.file_uid)
+            FileManager().DeleteFile(file)
         deleted_count, _ = files.delete()
         return NewSuccessResponse({"count": deleted_count})
 
@@ -210,6 +225,8 @@ class ThumbnailView(APIView):
             raise ParamError("Missing fileID parameter")
         file = FileInfo.objects.get(id=fileID)
         file_path = FileManager().getThumbnailPath(file.file_uid)
+        if not os.path.exists(file_path):
+            raise InternalServerError
         thumbnail = open(file_path, 'rb')
         return FileResponse(thumbnail, content_type='image/jpeg')
 
@@ -217,35 +234,25 @@ class ThumbnailView(APIView):
 
 class GetFileView(APIView):
     def get(self, request, fileID):
+        needAnalysed = request.GET.get('analysed')
         path = ""
         if fileID[-3:] == ".ts":
-            # fileID根据下划线分隔
-            fileUID = fileID.split('_')[0]
+            # 根据最右边的下划线分隔
+            fileUID = fileID.rsplit('_', 1)[0]
             path = FileManager().GetTSPath(fileUID, fileID)
             file = open(path, 'rb')
             return FileResponse(file, content_type="video/MP2T")
         else:
             fileInfo = FileInfo.objects.get(id=fileID)
+            fileUID = fileInfo.file_uid
+            if needAnalysed is not None and needAnalysed == "true":
+                fileUID = f"analysed_{fileInfo.file_uid}"
             if fileInfo.file_type == FileType.Video.value:
-                path = FileManager().GetM3U8Path(fileInfo.file_uid)
+                path = FileManager().GetM3U8Path(fileUID)
                 file = open(path, 'rb')
                 return FileResponse(file)
             else:
                 return NewErrorResponse(400, "todo file type")
-
-class GetM3U8View(APIView):
-    def get(self, request, fileID):
-        fileInfo = FileInfo.objects.get(id=fileID)
-        path = ""
-        if fileInfo.file_type == FileType.Video.value:
-            path = FileManager().GetM3U8Path(fileInfo.file_uid)
-        else:
-            return NewErrorResponse(400, "todo file type")
-        if path == "":
-            raise InternalServerError
-        file = open(path, 'rb')
-        return FileResponse(file)
-
 
 class DownloadFileView(APIView):
     def get(self, request, fileID):

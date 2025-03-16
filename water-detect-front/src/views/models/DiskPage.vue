@@ -8,7 +8,7 @@
               :with-credentials="true"
               :multiple="true"
               :http-request="addFile"
-              accept=".mp4"
+              accept="image/*,video/*"
           >
             <el-button type="primary">
               <span class="iconfont icon-upload"></span>
@@ -107,11 +107,11 @@
                   @click="cancelNameEdit(index)"
               ></span>
             </div>
-            <span class="op" :style="{width: row.showOp && row.id?'280px':'0px'}">
+            <span class="op" :style="{width: row.showOp && row.id?'230px':'0px'}">
               <template v-if="row.showOp && row.id">
-                <span class="iconfont icon-share1" @click="share(row)"
-                >分享</span
-                >
+<!--                <span class="iconfont icon-share1" @click="openIn(row)"-->
+                <!--                >打开</span-->
+                <!--                >-->
                 <span
                     class="iconfont icon-download"
                     @click="download(row)"
@@ -134,9 +134,14 @@
           </div>
         </template>
         <template #size="{ index, row }">
-        <span v-if="row.file_type !== 1">
-          {{ Utils.size2Str(row.size) || 0 }}
-        </span>
+          <span v-if="row.file_type !== 1">
+            {{ Utils.size2Str(row.size) || 0 }}
+          </span>
+        </template>
+        <template #moreOp="{index, row}">
+          <span v-if="row.file_type !== 1 && !row.is_analysed">
+            <el-button @click="openWithCompare(row)">与分析后对比</el-button>
+          </span>
         </template>
       </Table>
     </div>
@@ -160,11 +165,11 @@ import FolderSelect from '@/components/FolderSelect.vue'
 import {ElMessageBox} from "element-plus";
 import Navigation from "@/components/Navigation.vue";
 import Preview from "@/components/preview/Preview.vue";
+import {useRouter} from "vue-router";
 
 const emit = defineEmits(["addFile"]);
 const showLoading = ref(false)
 const addFile = async (fileData) => {
-  console.log("====", currentFolder)
   emit("addFile", {file: fileData.file, filePid: currentFolder.value.fileID});
 };
 const reload = () => {
@@ -204,6 +209,11 @@ const columns = [
     scopedSlots: "size",
     width: 200,
   },
+  {
+    label: '操作',
+    scopedSlots: 'moreOp',
+    width: 200,
+  }
 ];
 
 onMounted(() => {
@@ -217,11 +227,9 @@ const loadDataList = () => {
     filePid: currentFolder.value.fileID,
     searchFilename: filenameSearchText.value
   }
-  console.log(params)
   httpRequest.get("/directory/fileList", {
     params
   }).then(({data}) => {
-    console.log(data)
     if (data.code !== 0) {
       throw data.msg
     }
@@ -297,7 +305,6 @@ const editFileName = (index) => {
   });
   let currentData = tableData.value.list[index];
   currentData.showEdit = true;
-  console.log(currentData)
   //编辑文件
   currentData.filenameReal = currentData.filename;
   editing.value = true;
@@ -342,7 +349,6 @@ const delFileBatch = () => {
   }
   ElMessageBox.confirm(`你确定要删除这些文件吗？(共${selectFileIdList.value.length}个文件)`,
   ).then(() => {
-    console.log(selectFileIdList.value)
     httpRequest.delete("/directory/fileList", {
       params: {
         fileIDs: selectFileIdList.value.join(','),
@@ -446,6 +452,17 @@ const download = async (row) => {
     message.error("获取下载链接错误")
   })
 };
+
+const router = useRouter();
+const openWithCompare = (row) => {
+  console.log('compare,', row)
+  router.push({
+    path: '/analyse',
+    query: {
+      id: row.id,
+    }
+  })
+}
 
 
 </script>

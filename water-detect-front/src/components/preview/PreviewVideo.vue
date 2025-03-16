@@ -1,5 +1,5 @@
 <template>
-  <div ref="player" id="player"></div>
+  <div ref="playerRef" id="player"></div>
 </template>
 
 <script setup>
@@ -7,20 +7,35 @@ import DPlayer from "dplayer";
 import {nextTick, onMounted, ref} from "vue";
 import Hls from "hls.js";
 
+
 const props = defineProps({
   url: {
     type: String,
   },
 });
 
+const emit = defineEmits(["play", "pause", "seeked"]);
+
 const videoInfo = ref({
   video: null,
 });
 
-const player = ref(null);
+
+let dp = null;
+
+let isCallback = true
+
+const seekCallback = () => {
+  if (isCallback) emit('seeked', dp.video.currentTime);
+}
+
+const playerRef = ref(null);
+
 const initPlayer = () => {
-  const dp = new DPlayer({
-    element: player.value,
+  dp = new DPlayer({
+    element: playerRef.value,
+    container: playerRef.value,
+    mutex: false,
     theme: "#b7daff",
     screenshot: true,
     video: {
@@ -35,9 +50,36 @@ const initPlayer = () => {
       },
     },
   });
-  // dp.seek(10);
+  dp.on('play', () => {
+    emit('play')
+  })
+  dp.on('pause', () => {
+    emit('pause')
+  })
+  dp.on('seeked', seekCallback);
 };
-
+const playVideo = () => {
+  if (dp) {
+    dp.play();
+  }
+}
+const pauseVideo = () => {
+  if (dp) {
+    dp.pause();
+  }
+}
+const seekVideo = (time) => {
+  if (dp) {
+    // 防止死循环
+    isCallback = false
+    dp.seek(time);
+    setTimeout(() => {
+      isCallback = true;
+      console.log("wowooowo");
+    }, 1000)
+  }
+}
+defineExpose({playVideo, pauseVideo, seekVideo});
 onMounted(() => {
   nextTick(() => {
     initPlayer();

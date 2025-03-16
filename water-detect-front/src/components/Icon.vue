@@ -41,6 +41,9 @@ const fileTypeMap = {
   9: {desc: "压缩包", icon: "zip"},
   10: {desc: "exe", icon: "pdf"},
   11: {desc: "其他文件", icon: "others"},
+
+  12: {desc: "分析后图片", icon: "image"},
+  13: {desc: "分析后视频", icon: "video"},
 };
 
 const getImage = () => {

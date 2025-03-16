@@ -17,7 +17,8 @@ def initYoloConsumer():
         credentials=pika.PlainCredentials(
             settings.RABBITMQ_CONFIG['username'],
             settings.RABBITMQ_CONFIG['password']
-        )
+        ),
+        heartbeat=60
     )
     connection = pika.BlockingConnection(params)
     channel = connection.channel()
@@ -29,7 +30,7 @@ def initYoloConsumer():
     channel.start_consuming()
 
 logger = logging.getLogger(__name__)
-SKIP = True
+SKIP = False
 def consumeHandler(ch, method, properties, body):
     from database.models import FileInfo
     from common_service.fileService import FileManager

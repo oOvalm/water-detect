@@ -7,7 +7,8 @@ from enum import Enum
 
 from django.db import models
 
-from common.db_model import FileExtra, SystemFolder, AnalyseFileType
+from common.customError import CustomError
+from common.db_model import FileExtra, SystemFolder, AnalyseFileType, FileType
 
 
 # Create your models here.
@@ -69,7 +70,7 @@ class FileInfoManager(models.Manager):
             size = fileSize,
             file_pid = file_pid,
             folder_type=1,
-            file_type=3,
+            file_type=FileType.Video.value,
             filename=filename,
             user_id=user.id,
             file_uid = fileID,
@@ -78,18 +79,19 @@ class FileInfoManager(models.Manager):
         fileinfo.save()
         return fileinfo
     def createAnalysedFile(self, oriFileID, analysedUID, fileSize=0):
-        oriFile = FileInfo.objects.get(id=oriFileID)
+        oriFile = super().get(id=oriFileID)
         analysedFileInfo = FileInfo(
-            file_pid=SystemFolder.AnalysedFolder.value,
+            file_pid=oriFile.file_pid,
             user_id = oriFile.user_id,
+            is_analysed=True,
             size = fileSize,
             file_type = oriFile.file_type,
             filename = f"analysed_{oriFile.filename}",
             file_uid = analysedUID,
-            fileExtra = FileExtra(analyseType=AnalyseFileType.Analysed, oppositeID=oriFileID),
+            extra = json.dumps(FileExtra(analyseType=AnalyseFileType.Analysed.value, oppositeID=oriFileID).__json__()).encode('utf-8'),
         )
         analysedFileInfo.save()
-        oriFile.fileExtra = FileExtra(analyseType=AnalyseFileType.Origin, oppositeID=analysedFileInfo.id)
+        oriFile.extra = json.dumps(FileExtra(analyseType=AnalyseFileType.Origin.value, oppositeID=analysedFileInfo.id).__json__()).encode('utf-8')
         oriFile.save()
 
     def createFolder(self, pid: int, userID: int):
@@ -144,6 +146,7 @@ class FileInfoManager(models.Manager):
             return analyseFolder.id
         return folderID
 
+
 # Create your models here.
 
 
@@ -154,33 +157,19 @@ class FileInfo(models.Model):
     size = models.BigIntegerField(default=0, db_comment='文件大小')
     file_path = models.CharField(default='', max_length=4096, db_comment='文件路径')
     file_type = models.SmallIntegerField(default=0, db_comment='1:目录 2:图片 3:视频')
+    is_analysed = models.BooleanField(default=False, db_comment='是否分析过')
+    file_status = models.SmallIntegerField(default=1, db_comment='0:正常 1:解析中 2:解析失败')
     filename = models.CharField(max_length=4096, db_comment='用户上传时的文件名')
     folder_type = models.SmallIntegerField(default=0, db_comment='0:普通文件夹 1:根文件夹 2:分析文件夹')
     user_id = models.IntegerField(db_comment='userID')
-    thumbnail = models.BinaryField(null=True, db_comment='thumbnail')
     extra = models.BinaryField(null=True, db_comment='extra')
     create_time = models.DateTimeField(auto_now_add=True,null=False)
     update_time = models.DateTimeField(auto_now=True,null=False)
 
     objects = FileInfoManager()
-    @property
-    def fileExtra(self)->FileExtra :
-        if self.extra:
-            try:
-                return FileExtra.from_json(self.extra)
-            except Exception:
-                return FileExtra()
-        return FileExtra()
-
-    def save(self, *args, **kwargs):
-        if hasattr(self, 'fileExtra'):
-            try:
-                extra_data = json.dumps(self.fileExtra.__json__())
-                self.extra = extra_data.encode('utf-8')
-            except (AttributeError, TypeError, UnicodeEncodeError):
-                self.extra = None
-        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'water_detect_file_info'
 
+    def UIDFilename(self):
+        return f"{self.file_uid}.{self.filename.split('.')[-1]}"

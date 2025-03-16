@@ -1,4 +1,8 @@
+import subprocess
+import sys
 import time
+
+import torch
 
 from yolo.yolo_model.main import AnalyseVideo, merge_ts_files
 
@@ -24,4 +28,7 @@ def TestTs2Avi():
     pass
 
 if __name__ == '__main__':
-    TestMergeTs2Mp4()
+    print(sys.executable)
+    result = subprocess.run(['which', 'pip'], capture_output=True, text=True)
+    print(result.stdout.strip())
+    print(torch.cuda.is_available())

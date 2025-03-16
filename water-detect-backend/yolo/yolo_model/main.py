@@ -6,19 +6,26 @@ import time
 from ultralytics import YOLO
 from moviepy import VideoFileClip
 
+from common.annotation import singleton
+from common.db_model import FileType
 from common_service import redis
 from waterDetect import settings
 
-USE_MOCK = True
+USE_MOCK = False
 
 
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
-VIDEO_PATH = os.path.join(settings.MEDIA_ROOT, 'videos')
+SOURCE_PATH = os.path.join(settings.MEDIA_ROOT, 'files')
 YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\water-detect-backend\yolo\yolo_model\yolov8n.pt'
 
 # 加载 YOLOv8n 模型
-model = YOLO(YOLO_MODEL_PATH)
+@singleton
+class singleYOLO(YOLO):
+    def __init__(self):
+        super().__init__(YOLO_MODEL_PATH)
+
+
 logger = logging.getLogger(__name__)
 
 def GetFromModel_Mock(path: str, destFolderName: str, projFolderName: str):
@@ -32,7 +39,7 @@ def GetFromModel(path: str, destFolderName: str, projFolderName: str):
         GetFromModel_Mock(path, destFolderName, projFolderName)
         return
     # 使用模型对视频文件进行预测，并保存结果
-    results = model.predict(source=path, save=True,
+    results = singleYOLO().predict(source=path, save=True,
                             project=os.path.join(BASE_TMP, projFolderName),
                             name=f"{destFolderName}", stream=True)
     for _ in results:
@@ -53,12 +60,13 @@ def AnalyseVideo(path: str, fileUID: str):
     originM3U8 = os.path.join(path, 'index.m3u8')
     destM3U8 = os.path.join(destFolder, 'index.m3u8')
     if os.path.exists(originM3U8):
-        shutil.copy2(originM3U8, destM3U8)  # 复制 index.m3u8 文件
+        # 写一份解析后的m3u8文件
+        RewriteM3U8(originM3U8, destM3U8)
     else:
         logger.warning(f"index.m3u8 not found {originM3U8}")
 
     for i, file in enumerate(files):
-        if file.endswith('.ts') or file.endswith('.mp4'):
+        if file.endswith('.ts'):
             filename = f"analysed_{file.split('.')[0]}"
             GetFromModel(os.path.join(path, file), filename, fileUID)
             # 启动一个线程
@@ -79,10 +87,20 @@ def AnalyseVideo(path: str, fileUID: str):
         shutil.rmtree(tempAnalyseFolder)  # 删除临时文件夹
     else:
         logger.warning(f"temp folder not exist {tempAnalyseFolder}")
-    videoFilePath = os.path.join(VIDEO_PATH, f"analysed_{fileUID}.mp4")
+    videoFilePath = os.path.join(SOURCE_PATH, f"analysed_{fileUID}.mp4")
     merge_ts_files(destFolder, videoFilePath)
-    FileManager().CreateThumbnail(videoFilePath, f"analysed_{fileUID}")
+    FileManager().CreateThumbnail(videoFilePath, f"analysed_{fileUID}", FileType.Video.value)
     return f"analysed_{fileUID}", FileManager().GetFileSize(videoFilePath)
+
+def RewriteM3U8(src: str, dest: str):
+    with open(src, 'r') as f:
+        lines = f.readlines()
+    with open(dest, 'w') as f:
+        for line in lines:
+            newLine = line
+            if line.endswith('.ts') or line.endswith('.ts\n'):
+                newLine = f"analysed_{line.split('.')[0]}.ts\n"
+            f.write(newLine)
 
 def resolveDoneVideo(videoPath, destFolder, filename):
     avi_to_ts(videoPath, os.path.join(destFolder, f"{filename}.ts"))

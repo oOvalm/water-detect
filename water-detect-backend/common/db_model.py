@@ -44,3 +44,8 @@ class SystemFolder(Enum):
     Root = -1
     OnlineAnalyseFolder = -2
     AnalysedFolder = -3
+
+class FileStatus(Enum):
+    Done = 0
+    Converting = 1
+    ConvertFailed = 2
