@@ -14,7 +14,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["play", "pause", "seeked"]);
+const emit = defineEmits(["play", "pause", "seeked", "waiting", "canplaythrough"]);
 
 const videoInfo = ref({
   video: null,
@@ -57,6 +57,12 @@ const initPlayer = () => {
     emit('pause')
   })
   dp.on('seeked', seekCallback);
+  dp.on('waiting', () => {
+    emit('waiting')
+  })
+  dp.on('canplaythrough', () => {
+    emit('canplaythrough')
+  })
 };
 const playVideo = () => {
   if (dp) {
@@ -79,7 +85,23 @@ const seekVideo = (time) => {
     }, 1000)
   }
 }
-defineExpose({playVideo, pauseVideo, seekVideo});
+const getVideoStatus = () => {
+  return {
+    currentTime: dp.video.currentTime,
+    paused: dp.video.paused,
+    volume: dp.video.volume,
+  }
+}
+const setVideoStatus = ({currentTime, paused, volume}) => {
+  dp.video.currentTime = currentTime;
+  dp.video.volume = volume;
+  if (paused) {
+    dp.pause();
+  } else {
+    dp.play();
+  }
+}
+defineExpose({playVideo, pauseVideo, seekVideo, getVideoStatus, setVideoStatus});
 onMounted(() => {
   nextTick(() => {
     initPlayer();

@@ -11,7 +11,7 @@ from common.db_model import FileType
 from common_service import redis
 from waterDetect import settings
 
-USE_MOCK = False
+USE_MOCK = True
 
 
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')

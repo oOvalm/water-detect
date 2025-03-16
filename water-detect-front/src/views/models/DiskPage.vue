@@ -433,6 +433,10 @@ const preview = (data) => {
     navigationRef.value.openFolder(data);
     return;
   }
+  if (data.file_status === 1) {
+    message.error('文件解析中，无法打开')
+    return
+  }
   previewRef.value.showPreview(data, 0);
 };
 //目录

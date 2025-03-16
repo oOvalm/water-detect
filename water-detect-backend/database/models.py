@@ -7,7 +7,6 @@ from enum import Enum
 
 from django.db import models
 
-from common.customError import CustomError
 from common.db_model import FileExtra, SystemFolder, AnalyseFileType, FileType
 
 
@@ -81,6 +80,7 @@ class FileInfoManager(models.Manager):
     def createAnalysedFile(self, oriFileID, analysedUID, fileSize=0):
         oriFile = super().get(id=oriFileID)
         analysedFileInfo = FileInfo(
+            file_status=0,
             file_pid=oriFile.file_pid,
             user_id = oriFile.user_id,
             is_analysed=True,
@@ -145,6 +145,7 @@ class FileInfoManager(models.Manager):
                 analyseFolder = analyseFolder[0]
             return analyseFolder.id
         return folderID
+
 
 
 # Create your models here.

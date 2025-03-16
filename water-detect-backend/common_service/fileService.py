@@ -118,7 +118,7 @@ class LocalFileService():
     #     return None
 
 
-    def DeleteFile(self, fileInfo: FileInfo):
+    def DeleteFile(self, fileInfo):
         fileUID = fileInfo.file_uid
         removeFiles = [
             os.path.join(settings.MEDIA_ROOT, 'files', f"{fileInfo.UIDFilename()}"),

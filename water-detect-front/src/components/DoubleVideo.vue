@@ -1,151 +1,229 @@
 <template>
-  <div class="video-container">
-    <!-- 第一个视频播放器 -->
-    <div class="video-wrapper" :style="{ width: `${video1Width.value}%` }">
-      <video
-          ref="video1Ref"
-          :src="videoSrc1"
-          controls
-          @play="onPlay(1)"
-          @pause="onPause(1)"
-          @timeupdate="onTimeUpdate(1)"
-      ></video>
+  <div class="video-container" ref="doubleVideoRef">
+    <div class="video-wrapper" ref="leftRef">
+      <PreviewVideo ref="player1Ref" v-if="showOrigin" :url="originUrl"
+                    @play="()=>{syncVideo('play', 1)}"
+                    @pause="()=>{syncVideo('pause', 1)}"
+                    @seeked="(newTime) => {syncVideo('seeked', 1, {newTime: newTime})}"
+      ></PreviewVideo>
+      <div class="loading" v-else>
+        <el-icon class="is-loading">
+          <Loading/>
+        </el-icon>
+        <input type="text" value="视频转码中"/>
+      </div>
     </div>
-    <!-- 分割条 -->
-    <div
-        class="divider"
-        ref="dividerRef"
-        @mousedown="startDrag"
-        @touchstart="startDrag"
-    ></div>
-    <!-- 第二个视频播放器 -->
-    <div class="video-wrapper" :style="{ width: `${video2Width.value}%` }">
-      <video
-          ref="video2Ref"
-          :src="videoSrc2"
-          controls
-          @play="onPlay(2)"
-          @pause="onPause(2)"
-          @timeupdate="onTimeUpdate(2)"
-      ></video>
+    <div class="resize" ref="splitterRef" title="分界线">
+      <div class="dots">⋮</div>
+    </div>
+    <div class="video-wrapper" ref="rightRef">
+      <PreviewVideo ref="player2Ref" v-if="showAnalysed" :url="analysedUrl"
+                    @play="()=>{syncVideo('play', 2)}"
+                    @pause="()=>{syncVideo('pause', 2)}"
+                    @seeked="(newTime) => {syncVideo('seeked', 2, {newTime: newTime})}"
+      ></PreviewVideo>
+      <div class="loading" v-else>
+        <el-icon class="is-loading">
+          <Loading/>
+        </el-icon>
+      </div>
     </div>
   </div>
 </template>
-
 <script setup>
-import {ref, onMounted, onBeforeUnmount} from 'vue';
+import {onMounted, onUnmounted, ref, watch} from "vue";
+import PreviewVideo from "@/components/preview/PreviewVideo.vue";
+import {Loading} from "@element-plus/icons-vue";
 
-// 视频源地址
-const videoSrc1 = 'your_video_url_1.mp4';
-const videoSrc2 = 'your_video_url_2.mp4';
 
-// 视频播放器引用
-const video1Ref = ref(null);
-const video2Ref = ref(null);
-// 分割条引用
-const dividerRef = ref(null);
-
-// 控制视频播放器同步的标志
-const isSyncing = ref(false);
-// 两个视频播放器的宽度
-const video1Width = ref(50);
-const video2Width = ref(50);
-// 拖动相关状态
-const isDragging = ref(false);
-const startX = ref(0);
-const initialVideo1Width = ref(0);
-
-// 播放事件处理
-const onPlay = (playerIndex) => {
-  if (isSyncing.value) return;
-  isSyncing.value = true;
-  const otherPlayer = playerIndex === 1 ? video2Ref.value : video1Ref.value;
-  otherPlayer.play();
-  isSyncing.value = false;
-};
-
-// 暂停事件处理
-const onPause = (playerIndex) => {
-  if (isSyncing.value) return;
-  isSyncing.value = true;
-  const otherPlayer = playerIndex === 1 ? video2Ref.value : video1Ref.value;
-  otherPlayer.pause();
-  isSyncing.value = false;
-};
-
-// 播放进度更新事件处理
-const onTimeUpdate = (playerIndex) => {
-  if (isSyncing.value) return;
-  isSyncing.value = true;
-  const currentPlayer = playerIndex === 1 ? video1Ref.value : video2Ref.value;
-  const otherPlayer = playerIndex === 1 ? video2Ref.value : video1Ref.value;
-  otherPlayer.currentTime = currentPlayer.currentTime;
-  isSyncing.value = false;
-};
-
-// 开始拖动
-const startDrag = (event) => {
-  isDragging.value = true;
-  startX.value = event.clientX || event.touches[0].clientX;
-  initialVideo1Width.value = video1Width.value;
-};
-
-// 拖动过程
-const drag = (event) => {
-  if (!isDragging.value) return;
-  const currentX = event.clientX || event.touches[0].clientX;
-  const diffX = currentX - startX.value;
-  const containerWidth = dividerRef.value.parentElement.offsetWidth;
-  const newWidth = initialVideo1Width.value + (diffX / containerWidth) * 100;
-  if (newWidth > 10 && newWidth < 90) {
-    video1Width.value = newWidth;
-    video2Width.value = 100 - newWidth;
+const props = defineProps({
+  originUrl: {
+    type: String,
+    default: ""
+  },
+  analysedUrl: {
+    type: String,
+    default: ""
+  },
+  showOrigin: {
+    type: Boolean,
+    default: false
+  },
+  showAnalysed: {
+    type: Boolean,
+    default: false
+  },
+  isSync: {
+    type: Boolean,
+    default: false,
   }
-};
+})
+const doubleVideoRef = ref();
+const splitterRef = ref();
+const leftRef = ref();
+const rightRef = ref();
+const player1Ref = ref();
+const player2Ref = ref();
 
-// 停止拖动
-const stopDrag = () => {
-  isDragging.value = false;
-};
+watch(() => props.isSync, (oldValue, newValue) => {
+  if (newValue) {
+    console.log("xxxx");
+    player2Ref.value.setVideoStatus(player1Ref.value.getVideoStatus());
+  }
+})
+
+const syncVideo = (op, srcPlayerID, extra) => {
+  console.log(props.isSync)
+  if (!props.isSync) return;
+  let destPlayer = null;
+  if (srcPlayerID === 1) destPlayer = player2Ref.value
+  else destPlayer = player1Ref.value
+  if (op === 'play') {
+    destPlayer.playVideo();
+  } else if (op === 'pause') {
+    destPlayer.pauseVideo();
+  } else if (op === 'seeked') {
+    const newTime = extra.newTime
+    destPlayer.seekVideo(newTime);
+  }
+}
+
+
+const addListener = () => {
+  let resize = splitterRef.value;
+  let left = leftRef.value;
+  let right = rightRef.value;
+  let doubleVideo = doubleVideoRef.value;
+  console.log(resize)
+  // 鼠标按下事件
+  resize.onmousedown = function (e) {
+    // 颜色改变提醒
+    resize.style.background = '#818181';
+    var startX = e.clientX;
+    var leftWidth = left.offsetWidth;
+
+    // 鼠标拖动事件
+    document.onmousemove = function (e) {
+      var endX = e.clientX;
+      var moveLen = leftWidth + (endX - startX); // 计算移动的距离
+      var maxT = doubleVideo.clientWidth - resize.offsetWidth; // 容器宽度 - 分隔条的宽度
+
+      if (moveLen < 30) moveLen = 30; // 最小宽度
+      if (moveLen > maxT - 30) moveLen = maxT - 30; // 最大宽度
+
+      left.style.width = moveLen + 'px';
+      right.style.width = (doubleVideo.clientWidth - moveLen - 10) + 'px';
+    };
+
+    // 鼠标松开事件
+    document.onmouseup = function () {
+      // 颜色恢复
+      resize.style.background = '#d6d6d6';
+      document.onmousemove = null;
+      document.onmouseup = null;
+      resize.releaseCapture && resize.releaseCapture(); // 释放鼠标捕获
+    };
+
+    resize.setCapture && resize.setCapture(); // 设置鼠标捕获
+    return false;
+  };
+}
+
+const removeListener = () => {
+  // 移除鼠标事件
+  if (splitterRef.value) {
+    splitterRef.value.onmousedown = null;
+    document.onmousemove = null;
+    document.onmouseup = null;
+  }
+}
 
 onMounted(() => {
-  video1Ref.value.play();
-  video2Ref.value.play();
-  window.addEventListener('mousemove', drag);
-  window.addEventListener('mouseup', stopDrag);
-  window.addEventListener('touchmove', drag);
-  window.addEventListener('touchend', stopDrag);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('mousemove', drag);
-  window.removeEventListener('mouseup', stopDrag);
-  window.removeEventListener('touchmove', drag);
-  window.removeEventListener('touchend', stopDrag);
-});
+  addListener();
+})
+onUnmounted(() => {
+  removeListener();
+})
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use "@/assets/file.list.scss";
+
+.double-video-player {
+  display: flex;
+  height: 100%; /* 可根据需要调整高度 */
+  width: 100%;
+  --separator-left: 50%; /* 初始分隔条位置 */
+}
+
 .video-container {
   display: flex;
   height: 300px;
 }
 
-.video-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.double-video-player .video-container:nth-child(1) {
+  width: calc(var(--separator-left) - 2.5px);
 }
 
-video {
-  width: 100%;
-  height: auto;
+.double-video-player .video-container:nth-child(3) {
+  width: calc(100% - var(--separator-left) - 2.5px);
 }
 
-.divider {
+.separator {
   width: 5px;
   background-color: #ccc;
   cursor: col-resize;
+  position: relative;
+  left: calc(var(--separator-left) - 2.5px);
+  transition: left 0.2s ease;
+  z-index: 1;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 100px;
+}
+
+/*拖拽区div样式*/
+.resize {
+  cursor: col-resize;
+  float: left;
+  position: relative;
+  top: 0;
+  background-color: #d6d6d6;
+  border-radius: 5px;
+  margin-top: -10px;
+  width: 10px;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  font-size: 32px;
+  color: white;
+
+  .dots {
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+  }
+}
+
+/*右侧div'样式*/
+.right {
+  float: left;
+  width: 68%; /*右侧初始化宽度*/
+  height: 100%;
+  background: #fff;
+  box-shadow: -1px 4px 5px 3px rgba(0, 0, 0, 0.11);
+}
+
+/*拖拽区鼠标悬停样式*/
+.resize:hover {
+  color: #444444;
 }
 </style>

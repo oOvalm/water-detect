@@ -3,6 +3,7 @@
     <div class="top-op">
       <el-button class="btn" type="primary" @click="uploadRTSPStream">RTSP流</el-button>
       <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>
+      <el-button class="btn" type="primary" @click="switchSync">{{ isSyncVideo ? "取消同步" : "开启同步" }}</el-button>
       <el-progress type="dashboard" :percentage="analyseProgress" v-if="fileInfo.id">
         <template #default="{ percentage }">
           <span class="percentage-value">{{ percentage }}%</span>
@@ -11,38 +12,15 @@
       </el-progress>
     </div>
   </div>
-  <div class="box" ref="doubleVideoRef" v-if="fileInfo.id">
-    <div class="left" ref="leftRef">
-      <PreviewVideo ref="player1Ref" v-if="originStatus === 0" :url="originUrl"
-                    @play="()=>{syncVideo('play', 1)}"
-                    @pause="()=>{syncVideo('pause', 1)}"
-                    @seeked="(newTime) => {syncVideo('seeked', 1, {newTime: newTime})}"
-      ></PreviewVideo>
-      <div class="loading" v-else>
-        <el-icon class="is-loading" v-if="originStatus === 1">
-          <Loading/>
-        </el-icon>
-        <el-icon color="red" v-else>
-          <WarningFilled/>
-        </el-icon>
-        <input type="text" :value="originStatus === 1 ? '视频转码中' : '转码失败'"/>
-      </div>
-    </div>
-    <div class="resize" ref="splitterRef" title="分界线">
-      <div class="dots">⋮</div>
-    </div>
-    <div class="right" ref="rightRef">
-      <PreviewVideo ref="player2Ref" v-if="isShowAnalysedVideo()" :url="analysedUrl"
-                    @play="()=>{syncVideo('play', 2)}"
-                    @pause="()=>{syncVideo('pause', 2)}"
-                    @seeked="(newTime) => {syncVideo('seeked', 2, {newTime: newTime})}"
-      ></PreviewVideo>
-      <div class="loading" v-else>
-        <el-icon class="is-loading">
-          <Loading/>
-        </el-icon>
-      </div>
-    </div>
+  <div class="video-container" v-if="fileInfo.id">
+    <DoubleVideo
+        style="width: 100%"
+        :originUrl="originUrl"
+        :analysedUrl="analysedUrl"
+        :show-origin="originStatus === 0"
+        :show-analysed="isShowAnalysedVideo()"
+        :is-sync="isSyncVideo"
+    ></DoubleVideo>
   </div>
   <div v-else>
     <el-upload
@@ -50,6 +28,7 @@
         :show-file-list="false"
         drag
         :http-request="uploadFile"
+        accept="video/*,image/*"
     >
       <el-icon class="el-icon--upload">
         <upload-filled/>
@@ -59,7 +38,7 @@
       </div>
       <template #tip>
         <div class="el-upload__tip">
-          视频仅支持分析mp4, 图片仅支持jpg/png
+          仅支持视频, 图片
         </div>
       </template>
     </el-upload>
@@ -74,20 +53,13 @@ import {Loading, UploadFilled, WarningFilled} from "@element-plus/icons-vue";
 import Preview from "@/components/preview/Preview.vue";
 import PreviewVideo from "@/components/preview/PreviewVideo.vue";
 import {useRoute} from "vue-router";
+import DoubleVideo from "@/components/DoubleVideo.vue";
 
 const emit = defineEmits(["addFile"]);
 const fileInfo = ref({}); // 原始文件信息
 
 const route = useRoute();
 const uploadedID = route.query.id;
-
-// html组件ref, 加listener的
-const splitterRef = ref();
-const leftRef = ref();
-const rightRef = ref();
-const doubleVideoRef = ref();
-const player1Ref = ref();
-const player2Ref = ref();
 
 // 两个视频路径
 const originUrl = ref("");
@@ -98,6 +70,9 @@ const originStatus = ref(1);
 const analyseStatus = ref(0);
 const analyseProgress = ref(0);
 
+// 是否同步两侧
+const isSyncVideo = ref(true);
+
 let timer = null;
 
 const uploadRTSPStream = () => {
@@ -107,24 +82,14 @@ const startAnalysis = () => {
   message.error('todo');
 };
 
-const syncVideo = (op, srcPlayerID, extra) => {
-  let destPlayer = null;
-  if (srcPlayerID === 1) destPlayer = player2Ref.value
-  else destPlayer = player1Ref.value
-  if (op === 'play') {
-    destPlayer.playVideo();
-  } else if (op === 'pause') {
-    destPlayer.pauseVideo();
-  } else if (op === 'seeked') {
-    const newTime = extra.newTime
-    destPlayer.seekVideo(newTime);
-  }
+const switchSync = async () => {
+  isSyncVideo.value = !isSyncVideo.value;
+  localStorage.setItem("isSyncVideo", isSyncVideo.value);
 }
 
 const uploadFile = async (fileData) => {
   emit("addFile", {file: fileData.file, filePid: -2});
 }
-
 const isShowAnalysedVideo = () => {
   return analyseStatus.value === 2 || analyseStatus.value === 3
 }
@@ -152,7 +117,7 @@ const fetchProcess = () => {
         analyseProgress.value = 100;
       } else if (analyseStatus.value === 2) {
         analysedUrl.value = `/directory/ts/getVideoInfo/${fileInfo.value.id}?analysed=true`;
-        analyseProgress.value = data.finished / data.total * 100;
+        analyseProgress.value = (data.finished / data.total * 100).toFixed(2);
       } else {
         analyseProgress.value = 0;
       }
@@ -173,6 +138,7 @@ const uploadDone = ({fileUID, ty, fileID}) => {
     }
     fileInfo.value = data.data;
     fetchProcess()
+    console.log(originUrl.value)
     timer = setInterval(() => {
       fetchProcess()
     }, 5000)
@@ -182,68 +148,24 @@ const uploadDone = ({fileUID, ty, fileID}) => {
 }
 defineExpose({uploadDone});
 
-watch(fileInfo, (newVal) => {
-  if (newVal) {
-    console.log(newVal);
-    nextTick(() => {
-      if (newVal.id) {
-        addListener();
-      }
-    })
-  }
-})
+// watch(fileInfo, (newVal) => {
+//   if (newVal) {
+//     console.log(newVal);
+//     nextTick(() => {
+//       if (newVal.id) {
+//         addListener();
+//       }
+//     })
+//   }
+// })
 
-
-const addListener = () => {
-  let resize = splitterRef.value;
-  let left = leftRef.value;
-  let right = rightRef.value;
-  let doubleVideo = doubleVideoRef.value;
-  console.log(resize)
-  // 鼠标按下事件
-  resize.onmousedown = function (e) {
-    // 颜色改变提醒
-    resize.style.background = '#818181';
-    var startX = e.clientX;
-    var leftWidth = left.offsetWidth;
-
-    // 鼠标拖动事件
-    document.onmousemove = function (e) {
-      var endX = e.clientX;
-      var moveLen = leftWidth + (endX - startX); // 计算移动的距离
-      var maxT = doubleVideo.clientWidth - resize.offsetWidth; // 容器宽度 - 分隔条的宽度
-
-      if (moveLen < 30) moveLen = 30; // 最小宽度
-      if (moveLen > maxT - 30) moveLen = maxT - 30; // 最大宽度
-
-      left.style.width = moveLen + 'px';
-      right.style.width = (doubleVideo.clientWidth - moveLen - 10) + 'px';
-    };
-
-    // 鼠标松开事件
-    document.onmouseup = function () {
-      // 颜色恢复
-      resize.style.background = '#d6d6d6';
-      document.onmousemove = null;
-      document.onmouseup = null;
-      resize.releaseCapture && resize.releaseCapture(); // 释放鼠标捕获
-    };
-
-    resize.setCapture && resize.setCapture(); // 设置鼠标捕获
-    return false;
-  };
-}
-
-const removeListener = () => {
-  // 移除鼠标事件
-  if (splitterRef.value) {
-    splitterRef.value.onmousedown = null;
-    document.onmousemove = null;
-    document.onmouseup = null;
-  }
-}
 
 onMounted(() => {
+  let tmp = localStorage.getItem("isSyncVideo")
+  console.log(tmp);
+  if (tmp !== null) {
+    isSyncVideo.value = tmp === "true";
+  }
   if (uploadedID) {
     console.log(uploadedID)
     uploadDone({
@@ -254,7 +176,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  removeListener();
   if (timer) {
     clearInterval(timer);
   }
@@ -273,7 +194,8 @@ onUnmounted(() => {
 }
 
 .video-container {
-  overflow: hidden;
+  display: flex;
+  height: 300px;
 }
 
 .double-video-player .video-container:nth-child(1) {
@@ -312,46 +234,6 @@ onUnmounted(() => {
   float: left;
 }
 
-/*拖拽区div样式*/
-.resize {
-  cursor: col-resize;
-  float: left;
-  position: relative;
-  top: 0;
-  background-color: #d6d6d6;
-  border-radius: 5px;
-  margin-top: -10px;
-  width: 10px;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  font-size: 32px;
-  color: white;
-
-  .dots {
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
-    display: -webkit-box;
-    display: -webkit-flex;
-    display: flex;
-    -webkit-flex-direction: column;
-    flex-direction: column;
-  }
-}
-
-/*拖拽区鼠标悬停样式*/
-.resize:hover {
-  color: #444444;
-}
-
-/*右侧div'样式*/
-.right {
-  float: left;
-  width: 68%; /*右侧初始化宽度*/
-  height: 100%;
-  background: #fff;
-  box-shadow: -1px 4px 5px 3px rgba(0, 0, 0, 0.11);
-}
 
 .loading {
   display: flex;

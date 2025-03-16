@@ -5,9 +5,9 @@ import threading
 import uuid
 
 from django.core.cache import cache
+from django.db import transaction
 from django.http import FileResponse, StreamingHttpResponse
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common import constants
@@ -16,11 +16,11 @@ from common.customError import InternalServerError, ParamError
 from common.db_model import FileType, FileStatus
 from common.mqModels import AnalyseTask
 from common.customResponse import NewSuccessResponse, NewErrorResponse
+from common_service import fileInfoService
 from common_service.fileService import FileManager
 from database.models import FileInfo
-from directory import utils
 from directory.forms import GetFileListForm
-from directory.serializers import FileInfoSerializer
+from database.serializers import FileInfoSerializer
 from directory.service import mq
 from waterDetect import settings
 
@@ -189,11 +189,21 @@ class FileListView(APIView):
         file_ids = [int(id) for id in file_ids_str.split(',') if id.strip().isdigit()]
         if not file_ids:
             raise ParamError("No valid file IDs provided")
-        files = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id)
-        for file in files:
+
+        deleted_files = []
+        with transaction.atomic():
+            files = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id)
+            folder_ids = []
+            for file in files:
+                if file.file_type == FileType.Folder.value:
+                    folder_ids.append(file.id)
+            deleted_files.extend(list(files))
+            deleted_count, _ = files.delete()
+            deleted_files.extend(fileInfoService.DeleteFolders(folder_ids))
+
+        for file in deleted_files:
             FileManager().DeleteFile(file)
-        deleted_count, _ = files.delete()
-        return NewSuccessResponse({"count": deleted_count})
+        return NewSuccessResponse({"count": len(deleted_files)})
 
 
 class FolderListView(APIView):
@@ -234,25 +244,28 @@ class ThumbnailView(APIView):
 
 class GetFileView(APIView):
     def get(self, request, fileID):
-        needAnalysed = request.GET.get('analysed')
-        path = ""
-        if fileID[-3:] == ".ts":
-            # 根据最右边的下划线分隔
-            fileUID = fileID.rsplit('_', 1)[0]
-            path = FileManager().GetTSPath(fileUID, fileID)
-            file = open(path, 'rb')
-            return FileResponse(file, content_type="video/MP2T")
-        else:
-            fileInfo = FileInfo.objects.get(id=fileID)
-            fileUID = fileInfo.file_uid
-            if needAnalysed is not None and needAnalysed == "true":
-                fileUID = f"analysed_{fileInfo.file_uid}"
-            if fileInfo.file_type == FileType.Video.value:
-                path = FileManager().GetM3U8Path(fileUID)
+        try:
+            needAnalysed = request.GET.get('analysed')
+            path = ""
+            if fileID[-3:] == ".ts":
+                # 根据最右边的下划线分隔
+                fileUID = fileID.rsplit('_', 1)[0]
+                path = FileManager().GetTSPath(fileUID, fileID)
                 file = open(path, 'rb')
-                return FileResponse(file)
+                return FileResponse(file, content_type="video/MP2T")
             else:
-                return NewErrorResponse(400, "todo file type")
+                fileInfo = FileInfo.objects.get(id=fileID)
+                fileUID = fileInfo.file_uid
+                if needAnalysed is not None and needAnalysed == "true":
+                    fileUID = f"analysed_{fileInfo.file_uid}"
+                if fileInfo.file_type == FileType.Video.value:
+                    path = FileManager().GetM3U8Path(fileUID)
+                    file = open(path, 'rb')
+                    return FileResponse(file)
+                else:
+                    return NewErrorResponse(400, "todo file type")
+        except Exception as e:
+            print(f'GetFileView error: {e}')
 
 class DownloadFileView(APIView):
     def get(self, request, fileID):
