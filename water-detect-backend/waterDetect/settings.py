@@ -223,7 +223,7 @@ MEDIA_URL = 'D:/coding/graduation-design/water-detect/media/'
 FFMPEG_PATH = r'D:\Program Files\ffmpeg-7.1-full_build\bin\ffmpeg.exe'
 
 RABBITMQ_CONFIG = {
-    'host': '192.168.198.100',  # 替换为你的NameServer地址
+    'host': '127.0.0.1',  # 替换为你的NameServer地址
     'port': 5672,
     'username': 'water-detect-proj',
     'password': 'water-detect-proj'
