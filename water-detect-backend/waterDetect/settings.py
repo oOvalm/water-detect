@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     'directory',
     'self_test',
     'yolo',
-    # 'online_stream',
+    'online_stream',
 ]
 
 

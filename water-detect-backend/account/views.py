@@ -12,7 +12,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from account.forms import RegisterForm, LoginForm
 from database.models import User
 from common import constants
-from common_service import redis
+from common_service import redisService
 from common.customResponse import NewSuccessResponse, NewErrorResponse
 
 import json

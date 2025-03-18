@@ -22,11 +22,19 @@ const router = createRouter({
                     component: () => import('@/views/models/OnlineAnalyse.vue')
                 },
                 {
+                    path: 'stream-key',
+                    name: "key管理",
+                    component: () => import('@/views/models/KeyManage.vue')
+                },
+                {
                     path: 'disk',
                     name: '分析记录',
                     component: () => import('@/views/models/DiskPage.vue')
+                }, {
+                    path: 'test',
+                    name: "测试页面",
+                    component: () => import('@/views/models/TestPage.vue')
                 }
-
             ]
         },
         {

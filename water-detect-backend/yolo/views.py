@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from common.customResponse import NewErrorResponse, NewSuccessResponse
 from common.db_model import AnalyseFileType
-from common_service import redis
+from common_service import redisService
 from database.models import FileInfo
 
 

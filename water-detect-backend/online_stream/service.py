@@ -1,12 +1,15 @@
 import logging
 import os
 import subprocess
+import time
 from datetime import datetime
-
 import cv2
 
+from common_service import redisService
+from common_service.lock import RedisLock
+from common_service.redisService import GetDefaultRedis
 from waterDetect import settings
-from yolo.yolo_model.analyse import AnalyseImage
+from yolo.yolo_model.analyse import AnalyseImage, GetFromModel
 from yolo.yolo_model.video_utils import merge_video_files
 
 rtmp_host = f"{settings.NGINX_CONFIG['host']}:{settings.NGINX_CONFIG['rtmp_port']}"
@@ -115,3 +118,50 @@ def save_frameList(frames, outputPath, fps):
 
     # 释放视频写入对象
     out.release()
+
+
+def capture_ori_stream(app, stream_key, event, que):
+    try:
+        stream_name = f"{app}_{stream_key}"
+        with RedisLock(GetDefaultRedis(), f"capture_ori_stream:{stream_name}", expire=5) as r:
+            hls_folder = f"{settings.MEDIA_ROOT}/hls/{stream_name}"
+            if not r.is_acquired:
+                print('get lock fail')
+                folders = os.listdir(hls_folder)
+                folders.sort()
+                que.put(f'hls/{stream_name}/{folders[-1]}/stream_{stream_key}.m3u8')
+                event.set()
+                return
+            rtmp_url = f"rtmp://{rtmp_host}/{app}/{stream_key}"
+            currentTimeStr = datetime.now().strftime("%Y%m%d%H%M%S")
+            hls_folder = f"{settings.MEDIA_ROOT}/hls/{stream_name}/{currentTimeStr}"
+            hls_path = f"{settings.MEDIA_ROOT}/hls/{stream_name}/{currentTimeStr}/stream_{stream_key}.m3u8"
+            if not os.path.exists(f"{settings.MEDIA_ROOT}/hls/{stream_name}"):
+                os.makedirs(f"{settings.MEDIA_ROOT}/hls/{stream_name}")
+            if not os.path.exists(hls_folder):
+                os.makedirs(hls_folder)
+            command = [
+                'ffmpeg',
+                '-i', rtmp_url,
+                '-c:v', 'libx264',
+                '-c:a', 'aac',
+                '-f', 'hls',
+                '-hls_time', '10',
+                '-hls_list_size', '6',
+                hls_path
+            ]
+            subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            que.put(f'hls/{stream_name}/{currentTimeStr}/stream_{stream_key}.m3u8')
+            event.set()
+            currentID = 0
+            while True:
+                oriPath = os.path.join(hls_folder, f"stream_{stream_key}{currentID}.ts")
+                if not os.path.exists(oriPath):
+                    time.sleep(5)
+                    continue
+                GetFromModel(oriPath, f"stream_{stream_key}{currentID}", stream_name)
+    except Exception as e:
+        print("capture_ori_stream error", e)
+    finally:
+        if not event.is_set():
+            event.set()

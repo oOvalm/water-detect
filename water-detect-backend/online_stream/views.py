@@ -1,12 +1,26 @@
+import base64
+import queue
 import subprocess
 import threading
+import uuid
 
 import cv2
+import requests
 from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import viewsets, filters
+from rest_framework.pagination import PageNumberPagination
+from database.models import StreamKeyInfo
+from database.serializers import StreamKeyInfoSerializer
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
 
-from online_stream.service import analyse_stream
+
+from online_stream.service import analyse_stream, rtmp_host, capture_ori_stream
+from waterDetect import settings
 
 
 def ResolveFrame(frame):
@@ -98,3 +112,48 @@ def rtmpPublishDone(request):
     stream_name = request.GET.get('name')
     print(app, stream_name)
     return HttpResponse("ok", status=200)
+
+
+
+
+@csrf_exempt
+def stream_proxy(request, app, stream_key):
+    try:
+        event, que = threading.Event(), queue.Queue()
+        threading.Thread(target=capture_ori_stream, args=(app, stream_key,event,que,)).start()
+        print('start wait')
+        event.wait()
+        path = que.get()
+        print('end wait')
+        # 返回 HLS 流的 URL 给前端
+        return HttpResponse(path, content_type='text/plain')
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+
+
+class CustomPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class StreamKeyInfoViewSet(viewsets.ModelViewSet):
+    queryset = StreamKeyInfo.objects.all()
+    serializer_class = StreamKeyInfoSerializer
+    pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['stream_name']
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # 只返回 user_id 等于当前请求用户 id 的记录
+        return self.queryset.filter(user_id=self.request.user.id)
+
+    def perform_create(self, serializer):
+        # 生成一个随机的 UUID 并转换为字符串
+        stream_key = base64.b64encode(str(uuid.uuid4()).encode('utf-8')[:9]).decode('utf-8').replace('=', '')
+        serializer.save(user_id=self.request.user.id, stream_key=stream_key)
+
+    def perform_update(self, serializer):
+        # 更新时只传入 stream_name 和 stream_description
+        serializer.save()

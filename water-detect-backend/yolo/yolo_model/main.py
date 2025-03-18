@@ -8,7 +8,7 @@ from moviepy import VideoFileClip
 
 from common.annotation import singleton
 from common.db_model import FileType
-from common_service import redis
+from common_service import redisService
 from waterDetect import settings
 from yolo.yolo_model.analyse import GetFromModel
 from yolo.yolo_model.video_utils import avi_to_ts, merge_video_files

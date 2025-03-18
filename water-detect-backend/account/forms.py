@@ -2,7 +2,7 @@ from django import forms
 
 from database.models import User
 from common import utils
-from common_service import redis
+from common_service import redisService
 
 
 class RegisterForm(forms.Form):

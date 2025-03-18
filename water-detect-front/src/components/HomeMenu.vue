@@ -10,7 +10,7 @@
       >
         <template #title>
           <el-icon>
-            <House/>
+            <component :is="item.icon"/>
           </el-icon>
           <span v-if="!isCollapsed">{{ item.title }}</span>
         </template>
@@ -27,9 +27,9 @@
 </template>
 
 <script setup>
-import {onBeforeMount, ref} from 'vue';
+import {onBeforeMount, onMounted, ref} from 'vue';
 import router from "@/router/index.js";
-import {House, ArrowLeft, ArrowRight} from "@element-plus/icons-vue";
+import {House, ArrowLeft, ArrowRight, Files, Key, VideoCamera} from "@element-plus/icons-vue";
 import {useRoute} from "vue-router";
 
 // 定义菜单数据
@@ -38,20 +38,32 @@ const menus = ref([
   {
     index: 0,
     title: '首页',
-    icon: '',
+    icon: House,
     path: '/',
   },
   {
     index: 1,
     title: '在线分析',
-    icon: 'el-icon-user',
+    icon: VideoCamera,
     path: 'analyse',
   },
   {
     index: 2,
+    title: "key管理",
+    icon: Key,
+    path: 'stream-key'
+  },
+  {
+    index: 3,
     title: '分析记录',
-    icon: 'el-icon-goods',
+    icon: Files,
     path: 'disk'
+  },
+  {
+    index: 4,
+    title: '测试页面',
+    icon: Files,
+    path: 'test'
   }
 ]);
 
@@ -68,7 +80,7 @@ const handleSelect = (key, keyPath) => {
   router.push(menus.value[key].path)
 };
 
-onBeforeMount(() => {
+onMounted(() => {
   const pat = useRoute().path.replaceAll('/', '');
   for (let i = 0; i < menus.value.length; i++) {
     if (pat === menus.value[i].path) {

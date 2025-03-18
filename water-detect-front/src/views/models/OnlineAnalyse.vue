@@ -2,7 +2,7 @@
   <div class="top">
     <div class="top-op">
       <el-button class="btn" type="primary" @click="uploadRTSPStream">RTSP流</el-button>
-      <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>
+      <!--      <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>-->
       <el-button class="btn" type="primary" @click="switchSync">{{ isSyncVideo ? "取消同步" : "开启同步" }}</el-button>
       <el-progress type="dashboard" :percentage="analyseProgress" v-if="fileInfo.id">
         <template #default="{ percentage }">
@@ -43,7 +43,18 @@
       </template>
     </el-upload>
   </div>
-  <Dialog title="xxx" :show="showStreamDialog"></Dialog>
+  <Dialog :show="streamDialogConfig.show" :title="streamDialogConfig.title" @close="cancelStream"
+          :buttons="streamDialogConfig.buttons" width="600px">
+    <el-form :model="streamDialogConfig.formData">
+
+      <el-form-item prop="streamName" label="串流key">
+        <div class="stream-key-panel">
+          <el-input clearable v-model.trim="streamDialogConfig.formData.streamName"></el-input>
+          <!--          <el-button class="btn" @click="getStreamKey">我的串流key</el-button>-->
+        </div>
+      </el-form-item>
+    </el-form>
+  </Dialog>
 </template>
 
 <script setup>
@@ -56,6 +67,8 @@ import PreviewVideo from "@/components/preview/PreviewVideo.vue";
 import {useRoute} from "vue-router";
 import DoubleVideo from "@/components/DoubleVideo.vue";
 import Dialog from "@/components/Dialog.vue";
+import {ElMessageBox} from "element-plus";
+import {RTMP_HOST} from "@/constants";
 
 const emit = defineEmits(["addFile"]);
 const fileInfo = ref({}); // 原始文件信息
@@ -75,13 +88,42 @@ const analyseProgress = ref(0);
 // 是否同步两侧
 const isSyncVideo = ref(true);
 
-const showStreamDialog = ref(false);
-
 let timer = null;
-
+const streamDialogConfig = ref({
+  show: false,
+  title: "连接在线流",
+  formData: {
+    streamName: "",
+  },
+  buttons: [
+    {
+      type: "primary",
+      click: () => {
+        playStream();
+      },
+      text: "播放",
+    },
+  ]
+})
+const getStreamKey = () => {
+  httpRequest.get("/stream/getMyStreamKey").then(({data}) => {
+    if (data.code !== 0) throw data.msg
+    ElMessageBox.alert(`获取串流可以成功, 你的串流key为${data.data.key}\n服务器连接: ${RTMP_HOST}`, '获取串流key成功', {confirmButtonText: 'OK'});
+    if (streamDialogConfig.value.formData.streamName === "") {
+      streamDialogConfig.value.formData.streamName = data.data.key;
+    }
+  })
+}
 const uploadRTSPStream = () => {
-  showStreamDialog.value = true;
+  streamDialogConfig.value.show = true;
 };
+const cancelStream = () => {
+  streamDialogConfig.value.show = false;
+}
+const playStream = () => {
+  message.info(`confirm, ${streamDialogConfig.value.formData.streamName}`)
+}
+
 const startAnalysis = () => {
   message.error('todo');
 };
@@ -256,5 +298,16 @@ onUnmounted(() => {
   display: block;
   margin-top: 10px;
   font-size: 12px;
+}
+
+
+.stream-key-panel {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+
+  .btn {
+    margin-left: 5px;
+  }
 }
 </style>

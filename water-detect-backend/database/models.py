@@ -174,3 +174,17 @@ class FileInfo(models.Model):
 
     def UIDFilename(self):
         return f"{self.file_uid}.{self.filename.split('.')[-1]}"
+
+
+
+
+class StreamKeyInfo(models.Model):
+    stream_name = models.CharField(max_length=4096, db_comment='流名称')
+    stream_description = models.CharField(null=True, max_length=4096, db_comment='流描述')
+    stream_key = models.CharField(null=True, max_length=4096, db_comment='流唯一标识')
+    user_id = models.IntegerField(db_comment='userID')
+    create_time = models.DateTimeField(auto_now_add=True,null=False)
+    update_time = models.DateTimeField(auto_now=True,null=False)
+    class Meta:
+        db_table = 'water_detect_stream_info'
+

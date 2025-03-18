@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import time
@@ -28,7 +29,8 @@ def TestTs2Avi():
     pass
 
 if __name__ == '__main__':
-    print(sys.executable)
-    result = subprocess.run(['which', 'pip'], capture_output=True, text=True)
-    print(result.stdout.strip())
-    print(torch.cuda.is_available())
+    hls_folder = r'D:\coding\graduation-design\water-detect\media\hls\live-ZGVmNjMzY2Et'
+    # 获取folder下所有folder
+    folders = os.listdir(hls_folder)
+    # 按照name排序
+    folders.sort()
