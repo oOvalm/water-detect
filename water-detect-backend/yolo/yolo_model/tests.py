@@ -28,9 +28,32 @@ def TestMergeTs2Mp4():
 def TestTs2Avi():
     pass
 
+import subprocess
+
+
+def check_rtmp_stream(url):
+    try:
+        command = [
+            'ffprobe',
+            '-v', 'error',
+            '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            url
+        ]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=10)
+        output = result.stdout.strip()
+        if output and float(output) > 0:
+            return True
+        else:
+            return False
+    except (subprocess.CalledProcessError, ValueError, subprocess.TimeoutExpired):
+        return False
+
+
+# 示例用法
 if __name__ == '__main__':
-    hls_folder = r'D:\coding\graduation-design\water-detect\media\hls\live-ZGVmNjMzY2Et'
-    # 获取folder下所有folder
-    folders = os.listdir(hls_folder)
-    # 按照name排序
-    folders.sort()
+    rtmp_url = 'rtmp://8.148.229.47:1935/live/ZGVmNjMzY2Et'
+    if check_rtmp_stream(rtmp_url):
+        print("该 RTMP 地址有输入流。")
+    else:
+        print("该 RTMP 地址无输入流。")

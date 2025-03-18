@@ -121,10 +121,10 @@ def stream_proxy(request, app, stream_key):
     try:
         event, que = threading.Event(), queue.Queue()
         threading.Thread(target=capture_ori_stream, args=(app, stream_key,event,que,)).start()
-        print('start wait')
         event.wait()
         path = que.get()
-        print('end wait')
+        if path.startswith('error'):
+            return HttpResponse(path, status=500)
         # 返回 HLS 流的 URL 给前端
         return HttpResponse(path, content_type='text/plain')
     except Exception as e:

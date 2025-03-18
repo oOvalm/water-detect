@@ -1,7 +1,7 @@
 <template>
   <div class="video-container" ref="doubleVideoRef">
     <div class="video-wrapper" ref="leftRef">
-      <PreviewVideo ref="player1Ref" v-if="showOrigin" :url="originUrl"
+      <PreviewVideo ref="player1Ref" v-if="showOrigin" :url="originUrl" :live="props.live"
                     @play="()=>{syncVideo('play', 1)}"
                     @pause="()=>{syncVideo('pause', 1)}"
                     @seeked="(newTime) => {syncVideo('seeked', 1, {newTime: newTime})}"
@@ -17,7 +17,7 @@
       <div class="dots">⋮</div>
     </div>
     <div class="video-wrapper" ref="rightRef">
-      <PreviewVideo ref="player2Ref" v-if="showAnalysed" :url="analysedUrl"
+      <PreviewVideo ref="player2Ref" v-if="showAnalysed" :url="analysedUrl" :live="props.live"
                     @play="()=>{syncVideo('play', 2)}"
                     @pause="()=>{syncVideo('pause', 2)}"
                     @seeked="(newTime) => {syncVideo('seeked', 2, {newTime: newTime})}"
@@ -54,6 +54,10 @@ const props = defineProps({
     default: false
   },
   isSync: {
+    type: Boolean,
+    default: false,
+  },
+  live: {
     type: Boolean,
     default: false,
   }

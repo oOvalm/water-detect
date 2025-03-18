@@ -66,9 +66,9 @@ def execute_command(cmd, outprint_log=False):
         result = error_stream.string_buffer + input_stream.string_buffer
 
         if outprint_log:
-            logger.info(f"执行命令:{cmd}，已执行完毕,执行结果:{result}")
+            logger.info(f"execute done:{cmd},result:{result}")
         else:
-            logger.info(f"执行命令:{cmd}，已执行完毕")
+            logger.info(f"execute done:{cmd}")
 
         return result
     finally:
@@ -83,4 +83,4 @@ if __name__ == "__main__":
         result = execute_command("ls -l", True)
         print(result)
     except Exception as e:
-        print(f"执行命令出错：{str(e)}")
+        print(f"execute error：{str(e)}")

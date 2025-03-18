@@ -12,6 +12,7 @@ import {ElInput, ElButton} from 'element-plus';
 import DPlayer from 'dplayer';
 import Hls from "hls.js";
 import httpRequest from "@/api/httpRequest.ts";
+import message from "@/utils/Message.js";
 
 const streamKey = ref('');
 const playerContainer = ref(null);
@@ -43,6 +44,9 @@ const playStream = () => {
         },
       }
     });
+  }).catch((e) => {
+    message.error('获取流连接失败');
+    console.log(e)
   })
 };
 </script>

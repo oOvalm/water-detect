@@ -12,6 +12,10 @@ const props = defineProps({
   url: {
     type: String,
   },
+  live: {
+    type: Boolean,
+    default: false,
+  }
 });
 
 const emit = defineEmits(["play", "pause", "seeked", "waiting", "canplaythrough"]);
@@ -38,6 +42,8 @@ const initPlayer = () => {
     mutex: false,
     theme: "#b7daff",
     screenshot: true,
+    autoplay: props.live,
+    live: props.live,
     video: {
       url: `/api${props.url}`,
       type: "customHls",
@@ -58,6 +64,9 @@ const initPlayer = () => {
       },
     },
   });
+  if (props.live) {
+    isCallback = false;
+  }
   dp.on('play', () => {
     emit('play')
   })

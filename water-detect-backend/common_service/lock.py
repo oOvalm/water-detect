@@ -82,7 +82,7 @@ class RedisLock:
 
         result = self.unlock_script(keys=(self._name,), args=(self._uid,))
         self.is_released = True if result else False
-        print(f"释放锁{self.is_released}")
+        print(f"release lock: {self.is_released}")
         return self.is_released
 
     def register_script(self):
@@ -93,11 +93,11 @@ class RedisLock:
     def renew(self, renew_expire=30):
         result = self.renew_script(keys=(self._name,), args=(renew_expire,))
         if result == 1:
-            raise Exception(f"{self._name} 没有获得锁或锁过期！")
+            raise Exception(f"{self._name} cannot renew lock or lock has been expired!")
         elif result == 2:
-            raise Exception(f"{self._name} 未设置过期时间")
+            raise Exception(f"{self._name} not set expire")
         elif result:
-            raise Exception(f"未知错误码: {result}")
+            raise Exception(f"unknown error code: {result}")
 
     @staticmethod
     def _renew_scheduler(weak_self, interval, lock_event):

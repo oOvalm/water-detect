@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 import cv2
 
+from common.ProcessUtils import execute_command
 from common_service import redisService
 from common_service.lock import RedisLock
 from common_service.redisService import GetDefaultRedis
@@ -124,24 +125,29 @@ def capture_ori_stream(app, stream_key, event, que):
     try:
         stream_name = f"{app}_{stream_key}"
         with RedisLock(GetDefaultRedis(), f"capture_ori_stream:{stream_name}", expire=5) as r:
-            hls_folder = f"{settings.MEDIA_ROOT}/hls/{stream_name}"
+            hls_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}"
             if not r.is_acquired:
                 print('get lock fail')
                 folders = os.listdir(hls_folder)
                 folders.sort()
-                que.put(f'hls/{stream_name}/{folders[-1]}/stream_{stream_key}.m3u8')
+                hls_path = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}\\{folders[-1]}\\stream_{stream_key}.m3u8"
+                if not os.path.exists(hls_path):
+                    que.put(f'error bizError')
+                else:
+                    que.put(f'hls\\{stream_name}\\{folders[-1]}\\stream_{stream_key}.m3u8')
                 event.set()
                 return
             rtmp_url = f"rtmp://{rtmp_host}/{app}/{stream_key}"
             currentTimeStr = datetime.now().strftime("%Y%m%d%H%M%S")
-            hls_folder = f"{settings.MEDIA_ROOT}/hls/{stream_name}/{currentTimeStr}"
-            hls_path = f"{settings.MEDIA_ROOT}/hls/{stream_name}/{currentTimeStr}/stream_{stream_key}.m3u8"
-            if not os.path.exists(f"{settings.MEDIA_ROOT}/hls/{stream_name}"):
-                os.makedirs(f"{settings.MEDIA_ROOT}/hls/{stream_name}")
+            hls_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}\\{currentTimeStr}"
+            hls_path = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}\\{currentTimeStr}\\stream_{stream_key}.m3u8"
+            if not os.path.exists(f"{settings.MEDIA_ROOT}\\hls\\{stream_name}"):
+                os.makedirs(f"{settings.MEDIA_ROOT}\\hls\\{stream_name}")
             if not os.path.exists(hls_folder):
                 os.makedirs(hls_folder)
             command = [
-                'ffmpeg',
+                settings.FFMPEG_PATH,
+                '-loglevel', 'debug',  # 添加详细日志级别
                 '-i', rtmp_url,
                 '-c:v', 'libx264',
                 '-c:a', 'aac',
@@ -150,18 +156,45 @@ def capture_ori_stream(app, stream_key, event, que):
                 '-hls_list_size', '6',
                 hls_path
             ]
-            subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            que.put(f'hls/{stream_name}/{currentTimeStr}/stream_{stream_key}.m3u8')
+            print(' '.join(command))
+            # execute_command(command, outprint_log=True)
+            process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
+            time.sleep(4)
+            if process.poll() is not None :
+                print(f"ffmpeg error: {process.poll()}")
+                que.put(f'error bizError')
+                event.set()
+                return
+            if not os.path.exists(hls_path):
+                que.put(f'error bizError')
+            else:
+                que.put(f'hls\\{stream_name}\\{currentTimeStr}\\stream_{stream_key}.m3u8')
             event.set()
             currentID = 0
+            failTime = 0
             while True:
                 oriPath = os.path.join(hls_folder, f"stream_{stream_key}{currentID}.ts")
                 if not os.path.exists(oriPath):
-                    time.sleep(5)
+                    failTime += 1
+                    process_return_code = process.poll()
+                    print(f'not found new ts file {failTime}')
+                    if process_return_code is not None:
+                        # 子进程运行完成了 && 没有未解析的文件, 退出
+                        print(f"ffmpeg process exited with return code {process_return_code}")
+                        break
+                    if not os.path.exists(hls_path) and failTime > 5*30:
+                        print(f"hls file not exist: {hls_path}, maybe ffmpeg process failed, kill subprocess")
+                        process.kill()
+                        break
+                    time.sleep(10)
                     continue
                 GetFromModel(oriPath, f"stream_{stream_key}{currentID}", stream_name)
+                currentID += 1
     except Exception as e:
         print("capture_ori_stream error", e)
     finally:
+        if process.poll() is not None:
+            process.kill()
+        print('capture return')
         if not event.is_set():
             event.set()
