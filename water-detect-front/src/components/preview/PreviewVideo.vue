@@ -43,7 +43,15 @@ const initPlayer = () => {
       type: "customHls",
       customType: {
         customHls: function (video, player) {
-          const hls = new Hls();
+          const hlsConfig = {
+            // 最大重试次数
+            maxRetry: Infinity,
+            // 初始重试延迟时间（毫秒）
+            retryDelay: 3000,
+            // 每次重试后延迟时间的增加量（倍数）
+            backoffFactor: 1
+          };
+          const hls = new Hls(hlsConfig);
           hls.loadSource(video.src);
           hls.attachMedia(video);
         },

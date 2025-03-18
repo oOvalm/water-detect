@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'directory',
     'self_test',
     'yolo',
+    # 'online_stream',
 ]
 
 
@@ -227,4 +228,9 @@ RABBITMQ_CONFIG = {
     'port': 5672,
     'username': 'water-detect-proj',
     'password': 'water-detect-proj'
+}
+
+NGINX_CONFIG = {
+    'host': '8.148.229.47',
+    'rtmp_port': '1935',
 }

@@ -43,6 +43,7 @@
       </template>
     </el-upload>
   </div>
+  <Dialog title="xxx" :show="showStreamDialog"></Dialog>
 </template>
 
 <script setup>
@@ -54,6 +55,7 @@ import Preview from "@/components/preview/Preview.vue";
 import PreviewVideo from "@/components/preview/PreviewVideo.vue";
 import {useRoute} from "vue-router";
 import DoubleVideo from "@/components/DoubleVideo.vue";
+import Dialog from "@/components/Dialog.vue";
 
 const emit = defineEmits(["addFile"]);
 const fileInfo = ref({}); // 原始文件信息
@@ -73,10 +75,12 @@ const analyseProgress = ref(0);
 // 是否同步两侧
 const isSyncVideo = ref(true);
 
+const showStreamDialog = ref(false);
+
 let timer = null;
 
 const uploadRTSPStream = () => {
-  message.error('todo');
+  showStreamDialog.value = true;
 };
 const startAnalysis = () => {
   message.error('todo');

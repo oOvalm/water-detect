@@ -4,7 +4,7 @@ import time
 
 import torch
 
-from yolo.yolo_model.main import AnalyseVideo, merge_ts_files
+from yolo.yolo_model.main import AnalyseVideo, merge_video_files
 
 
 def TestYoloAnalyse():
@@ -22,7 +22,7 @@ def TestYoloAnalyse():
 def TestMergeTs2Mp4():
     folder = r'D:\coding\graduation-design\water-detect\media\cuts\analysed_4c1c1295-03f8-4bdd-ae8a-67dce714a23c'
     target = r'D:\coding\graduation-design\water-detect\media\videos\analysed_xxx.mp4'
-    merge_ts_files(folder, target)
+    merge_video_files(folder, target, 'ts')
 
 def TestTs2Avi():
     pass

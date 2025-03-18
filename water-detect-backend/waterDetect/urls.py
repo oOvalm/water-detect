@@ -24,4 +24,5 @@ urlpatterns = [
     path('directory/', include('directory.urls')),
     path('selfTest/', include('self_test.urls')),
     path('analyse/', include('yolo.urls')),
+    path('stream/', include('online_stream.urls')),
 ]

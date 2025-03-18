@@ -48,8 +48,6 @@ def consumeHandler(ch, method, properties, body):
             logger.warning(f"file not exist, skip task: {mqInfo.fileID} {mqInfo.fileUID}")
             return
 
-
-
         if mqInfo.fileType == FileType.Video.value:
             analysedUID, size = AnalyseVideo(tsFolder, mqInfo.fileUID)
             FileInfo.objects.createAnalysedFile(mqInfo.fileID, analysedUID, size)
