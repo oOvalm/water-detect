@@ -2,7 +2,7 @@ import logging
 import os
 
 import ffmpeg
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 
 from common.ProcessUtils import execute_command
 
@@ -44,7 +44,7 @@ def merge_video_files(input_folder, output_file, src_file_type):
     :param input_folder: 包含TS视频文件的文件夹路径
     :param output_file: 合并后视频文件的输出路径
     """
-    from moviepy.editor import VideoFileClip, concatenate_videoclips
+    from moviepy import VideoFileClip, concatenate_videoclips
     logger.info(f"start merge {src_file_type} to mp4, src_folder: {input_folder}, destFileName: {output_file}")
     # 获取文件夹中所有的TS文件
     ts_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith(f'.{src_file_type}')]

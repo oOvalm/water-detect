@@ -4,7 +4,7 @@ import shutil
 import threading
 import time
 from ultralytics import YOLO
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 
 from common.annotation import singleton
 from common.db_model import FileType

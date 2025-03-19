@@ -1,6 +1,6 @@
 import math
 
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 
 
 def get_video_duration(file_path):

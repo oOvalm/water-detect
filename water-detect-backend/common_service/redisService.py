@@ -14,7 +14,9 @@ def GetEmailCaptcha(email):
     return GetDefaultRedis().get(f"email-captcha:{email}")
 
 def UploadAnalyseProcess(fileUID, **kwargs):
-    GetDefaultRedis().set(f"upload-analyse-process:{fileUID}", kwargs, constants.MINUTE*60)
+    # 转成字符串
+    parsed = json.dumps(kwargs)
+    GetDefaultRedis().set(f"upload-analyse-process:{fileUID}", parsed, constants.MINUTE*60)
 
 def GetAnalyseProcess(fileUID):
-    return GetDefaultRedis().get(f"upload-analyse-process:{fileUID}")
+    return json.loads(GetDefaultRedis().get(f"upload-analyse-process:{fileUID}"))

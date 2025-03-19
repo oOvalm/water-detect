@@ -246,5 +246,4 @@ def AnalyseVideoForStreamTs(srcPath, stream_key, stream_name, currentID, streamT
     # 获取path的ts视频文件的时长
     avi_to_ts(videoPath, destPath)
     # 移除文件
-    # os.remove(videoPath)
     return get_video_duration(destPath)
