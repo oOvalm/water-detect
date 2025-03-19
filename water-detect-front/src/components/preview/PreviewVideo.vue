@@ -37,11 +37,11 @@ const playerRef = ref(null);
 
 const initPlayer = () => {
   dp = new DPlayer({
-    element: playerRef.value,
+    // element: playerRef.value,
     container: playerRef.value,
     mutex: false,
     theme: "#b7daff",
-    screenshot: true,
+    // screenshot: true,
     autoplay: props.live,
     live: props.live,
     video: {

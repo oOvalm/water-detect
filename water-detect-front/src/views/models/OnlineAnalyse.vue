@@ -16,7 +16,7 @@
       </el-progress>
     </div>
   </div>
-  <div class="video-container" v-if="fileInfo.id">
+  <div class="video-container" v-if="fileInfo.id || isStreaming">
     <DoubleVideo
         style="width: 100%"
         :originUrl="originUrl"
@@ -88,8 +88,12 @@ const isStreaming = ref(false);
 const showStreamAnalysed = ref(false);
 const uploadRTSPStream = () => {
   httpRequest.get(`/stream/proxy/live/${streamKey.value}`).then(({data}) => {
-    originUrl.value = `/api/stream/${data}`;
+    originUrl.value = `/stream/${data}`;
     isStreaming.value = true;
+    httpRequest.get(`/stream/proxy/live/${streamKey.value}?analyse=true`).then(({data}) => {
+      analysedUrl.value = `/stream/${data}`;
+      showStreamAnalysed.value = true;
+    })
   }).catch((e) => {
     message.error("获取直播连接失败")
     console.log(e)
