@@ -8,7 +8,7 @@
 </template>
 
 <script setup>
-import {ref} from 'vue';
+import {onUnmounted, ref} from 'vue';
 import {ElInput, ElButton} from 'element-plus';
 import DPlayer from 'dplayer';
 import Hls from "hls.js";
@@ -56,6 +56,12 @@ const playStream = () => {
     console.log(e)
   })
 };
+
+onUnmounted(() => {
+  if (dp) {
+    dp.destroy();
+  }
+})
 </script>
 
 <style scoped>

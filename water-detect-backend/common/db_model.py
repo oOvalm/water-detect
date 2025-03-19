@@ -43,7 +43,7 @@ class FileType(Enum):
 class SystemFolder(Enum):
     Root = -1
     OnlineAnalyseFolder = -2
-    AnalysedFolder = -3
+    StreamReplayFolder = -3
 
 class FileStatus(Enum):
     Done = 0

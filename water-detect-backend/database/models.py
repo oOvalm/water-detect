@@ -94,20 +94,34 @@ class FileInfoManager(models.Manager):
         oriFile.extra = json.dumps(FileExtra(analyseType=AnalyseFileType.Origin.value, oppositeID=analysedFileInfo.id).__json__()).encode('utf-8')
         oriFile.save()
 
-    def createFolder(self, pid: int, userID: int):
+    def createStreamFile(self, filename: str,  fileUID: str, userID,fileSize=0, isAnalysed=False):
+        """
+        创建流回放的fileInfo，需要自己回填extra
+        """
+        streamFolder = super().filter(user_id=userID, file_pid=-1, folder_type=SystemFolder.StreamReplayFolder.value).first()
+        if not streamFolder:
+            streamFolder = self.createFolder(SystemFolder.Root.value, userID, "直播回放")
+            streamFolder.folder_type = SystemFolder.StreamReplayFolder.value
+            streamFolder.save()
+        fileinfo = FileInfo(
+            file_status=0,
+            size = fileSize,
+            file_pid = streamFolder.id,
+            file_type=FileType.Video.value,
+            filename=filename,
+            user_id=userID,
+            file_uid = fileUID,
+            is_analysed=isAnalysed,
+        )
+        fileinfo.save()
+        return fileinfo
+
+    def createFolder(self, pid: int, userID: int, folderName="新建文件夹"):
         files = super().filter(user_id=userID, file_pid=pid)
         parentPath = ""
         if pid != -1:
             parentPath = super().get(id=pid).file_path
-        mp = {}
-        for file in files:
-            if re.match(r'^新建文件夹(\(\d+\)|)$', file.filename):
-                mp[file.filename] = 1
-        id = 1
-        newFilename = f"新建文件夹"
-        while newFilename in mp:
-            newFilename = f"新建文件夹({id})"
-            id += 1
+        newFilename = self.autoRename(pid, folderName, userID)
         fileinfo = FileInfo(file_pid = pid, user_id=userID,
                             filename=newFilename, file_path=f"{parentPath}/{newFilename}",
                             file_type=1)
@@ -125,12 +139,18 @@ class FileInfoManager(models.Manager):
             return filename
         id = 1
         parts = filename.rsplit('.', 1)
-        prefix, suffix = parts[0], parts[1]
-        while cnt > 0:
-            # 按照最后一个点分割
-            filename = f"{prefix}({id}).{suffix}"
-            cnt = super().filter(file_pid=filePID, filename=filename, user_id=userID).count()
-            id += 1
+        if len(parts) > 1:
+            prefix, suffix = parts[0], parts[1]
+            while cnt > 0:
+                # 按照最后一个点分割
+                filename = f"{prefix}({id}).{suffix}"
+                cnt = super().filter(file_pid=filePID, filename=filename, user_id=userID).count()
+                id += 1
+        else:
+            while cnt > 0:
+                filename = f"{filename}({id})"
+                cnt = super().filter(file_pid=filePID, filename=filename, user_id=userID).count()
+                id += 1
         return filename
 
     def ResolveFolderID(self, userID: int, folderID: int):

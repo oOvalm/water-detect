@@ -1,15 +1,20 @@
+import json
 import logging
 import os
+import shutil
 import subprocess
 import time
 from datetime import datetime
 import cv2
 
 from common.ProcessUtils import execute_command
+from common.db_model import FileType, FileExtra, AnalyseFileType
 from common.utils import get_video_duration
 from common_service import redisService
+from common_service.fileService import FileManager
 from common_service.lock import RedisLock
 from common_service.redisService import GetDefaultRedis
+from database.models import FileInfo, StreamKeyInfo
 from online_stream.stream_m3u8 import stream_m3u8
 from waterDetect import settings
 from yolo.yolo_model.analyse import AnalyseImage, GetFromModel
@@ -124,13 +129,14 @@ def save_frameList(frames, outputPath, fps):
 
 
 def capture_streamNanalyse(app, stream_key, event, que):
-    process = None
+    # ctx 用于存此次分析的上下文
+    # process 输入流进程
+    process, ctx = None, {}
     try:
         stream_name = f"{app}_{stream_key}"
         log.info(f"start capture {stream_name}")
         # 抢流的监听锁
         with RedisLock(GetDefaultRedis(), f"capture_ori_stream:{stream_name}", expire=5) as r:
-            hls_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}"
             # 拿不到锁直接返回
             if not r.is_acquired:
                 print('get lock fail')
@@ -157,7 +163,7 @@ def capture_streamNanalyse(app, stream_key, event, que):
                 os.makedirs(analyse_hls_folder)
 
             # 开个子进程抓流，转为hls
-            command = [
+            capture_ori_cmd = [
                 settings.FFMPEG_PATH,
                 '-i', rtmp_url,
                 '-rw_timeout', '5000000',
@@ -169,8 +175,10 @@ def capture_streamNanalyse(app, stream_key, event, que):
                 '-hls_list_size', '6',
                 hls_path
             ]
-            print(' '.join(command))
-            process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
+
+
+            print(' '.join(capture_ori_cmd))
+            process = subprocess.Popen(capture_ori_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
             # 返回
             if process.poll() is not None :
                 print(f"ffmpeg error: {process.poll()}")
@@ -182,13 +190,8 @@ def capture_streamNanalyse(app, stream_key, event, que):
             else:
                 que.put(f'hls/{stream_name}/{currentTimeStr}/stream_{stream_key}.m3u8')
             event.set()
-
             # 当前线程扫ts文件，进行检测
             currentID, failTime = 0, 0
-
-            analyse_m3u8_path = os.path.join(analyse_hls_folder, f"analysed_stream_{stream_key}.m3u8")
-            analyse_m3u8 = stream_m3u8(analyse_m3u8_path, 6)
-
             while True:
                 oriPath = os.path.join(hls_folder, f"stream_{stream_key}{currentID}.ts")
                 if not os.path.exists(oriPath):
@@ -205,26 +208,65 @@ def capture_streamNanalyse(app, stream_key, event, que):
                         break
                     time.sleep(10)
                     continue
-                # 更新m3u8文件
-                analyseFilename = f"analysed_stream_{stream_key}{currentID}.ts"
-                duration = AnalyseVideoForStreamTs(oriPath, stream_key, stream_name,
+                ctx = AnalyseVideoForStreamTs(ctx, oriPath, stream_key, stream_name,
                                         currentID, currentTimeStr,
-                                        os.path.join(analyse_hls_folder, analyseFilename))
-                analyse_m3u8.push(analyseFilename, duration)
-                analyse_m3u8.write()
+                                        analyse_hls_folder)
                 failTime = 0
                 currentID += 1
-            analyse_m3u8.done()
-            analyse_m3u8.write()
+            ctx['ori_path'] = hls_folder
+            ctx['analyse_path'] = analyse_hls_folder
+            ctx['file_time'] = currentTimeStr
     except Exception as e:
         print("capture_ori_stream error", e)
     finally:
         if process is not None and process.poll() is not None:
             process.kill()
+        outputProcess = ctx.get('outputProcess')
+        if outputProcess is not None and outputProcess.poll() is not None:
+            outputProcess.stdin.close()
+            outputProcess.wait()
         print('capture return')
         if not event.is_set():
             event.set()
 
+    if ctx.get('ori_path'):
+        oriPath,analysePath, timeID, userID = ctx.get('ori_path'), ctx.get('analyse_path'), ctx.get('file_time'), -1
+        oriUID = f"stream_replay_{stream_key}_{timeID}"
+        analysedUID = f"analysed_{oriUID}"
+        oriVideoPath = os.path.join(settings.MEDIA_ROOT, 'files', f'{oriUID}.mp4')
+        user = StreamKeyInfo.objects.filter(stream_key=stream_key).first()
+        if user:
+            userID = user.user_id
+        oriFileInfo = resolve_stream_to_fileinfo(oriPath, oriUID, f'stream_{stream_key}.m3u8', userID)
+        analysedFileInfo = resolve_stream_to_fileinfo(analysePath, analysedUID, f'analysed_stream_{stream_key}.m3u8', userID)
+        oriExtra = FileExtra(analyseType=AnalyseFileType.Origin.value, oppositeID=analysedFileInfo.id)
+        analysedExtra = FileExtra(analyseType=AnalyseFileType.Analysed.value, oppositeID=oriFileInfo.id)
+        oriFileInfo.extra = json.dumps(oriExtra.__json__()).encode('utf-8')
+        analysedFileInfo.extra = json.dumps(analysedExtra.__json__()).encode('utf-8')
+        oriFileInfo.save()
+        analysedFileInfo.save()
+    log.info('capture_streamNanalyse return')
+
+
+def resolve_stream_to_fileinfo(streamPath, fileUID, m3u8Name, userID):
+    destVideoPath = os.path.join(settings.MEDIA_ROOT, 'files', f'{fileUID}.mp4')
+    # 合成mp4
+    merge_video_files(streamPath, destVideoPath,'ts')
+    # 缩略图
+    FileManager().CreateThumbnail(destVideoPath, fileUID, FileType.Video.value)
+    # 流媒体复制一份到cuts
+    new_path = os.path.join(settings.MEDIA_ROOT, 'cuts', fileUID)
+    os.makedirs(os.path.dirname(new_path), exist_ok=True)
+    shutil.copytree(streamPath, str(new_path))
+    # 写db
+    fileInfo = FileInfo.objects.createStreamFile(
+        filename=fileUID,
+        fileUID=fileUID,
+        userID=userID,
+        fileSize=FileManager().GetFileSize(destVideoPath),
+        isAnalysed=False,
+    )
+    return fileInfo
 
 def GetStreamM3U8Path(app, stream_key, isAnalyse=False):
     stream_name = f"{app}_{stream_key}"
@@ -241,9 +283,42 @@ def GetStreamM3U8Path(app, stream_key, isAnalyse=False):
     else:
         return None
 
-def AnalyseVideoForStreamTs(srcPath, stream_key, stream_name, currentID, streamTimeStr, destPath):
+def AnalyseVideoForStreamTs(ctx, srcPath, stream_key, stream_name, currentID, streamTimeStr, destFolder):
     videoPath = GetFromModel(srcPath, f"stream_{stream_key}{currentID}", f"{stream_name}_{streamTimeStr}")
-    # 获取path的ts视频文件的时长
-    avi_to_ts(videoPath, destPath)
-    # 移除文件
-    return get_video_duration(destPath)
+    outputProcess = ctx.get('outputProcess')
+    if outputProcess is None:
+        outputProcess = initStreamAnalyseOutput(videoPath, destFolder, f'analysed_stream_{stream_key}.m3u8')
+        ctx['outputProcess'] = outputProcess
+    cap = cv2.VideoCapture(videoPath)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        # 将每一帧写入FFmpeg的标准输入
+        outputProcess.stdin.write(frame.tobytes())
+    return ctx
+
+def initStreamAnalyseOutput(videoPath, destFolder, m3u8name):
+    cap = cv2.VideoCapture(videoPath)
+
+    # 宽度 高度 帧率, 每个同时时长
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    hls_time = 10
+    ffmpeg_command = [
+        'ffmpeg',
+        '-f', 'rawvideo',
+        '-pixel_format', 'bgr24',
+        '-video_size', f'{width}x{height}',
+        '-framerate', str(fps),
+        '-i', '-',  # 从标准输入读取视频数据
+        '-c:v', 'libx264',
+        '-hls_time', str(hls_time),
+        '-hls_list_size', '0',
+        f'{os.path.join(destFolder, m3u8name)}'
+    ]
+    print('initSAO', ''.join(ffmpeg_command))
+    ffmpeg_process = subprocess.Popen(ffmpeg_command, stdin=subprocess.PIPE)
+    cap.release()
+    return ffmpeg_process
