@@ -1,6 +1,8 @@
 import logging
 import os
+import subprocess
 
+import cv2
 import ffmpeg
 from moviepy import VideoFileClip
 
@@ -66,3 +68,53 @@ def merge_video_files(input_folder, output_file, src_file_type):
     final_clip.close()
 
 
+
+def InitStreamOutput(videoPath, destFolder, m3u8name, hlsListSize=0, tsPrefix=''):
+    """
+    初始化ffmpeg输出流
+    :param videoPath: 原始视频地址(只用于获取视频长 宽 fps)
+    :param destFolder: 输出目录
+    :param m3u8name: m3u8文件名
+    :return:子进程对象
+    """
+    cap = cv2.VideoCapture(videoPath)
+    # 宽度 高度 帧率, 每个同时时长
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    cap.release()
+    hls_time = 5
+    ffmpeg_command = [
+        'ffmpeg',
+        '-f', 'rawvideo',
+        '-pixel_format', 'bgr24',
+        '-video_size', f'{width}x{height}',
+        '-framerate', str(fps),
+        '-i', '-',  # 从标准输入读取视频数据
+        '-c:v', 'libx264',
+        '-hls_time', str(hls_time),
+        '-hls_list_size', str(hlsListSize)
+    ]
+    if tsPrefix != '':
+        ffmpeg_command.append('-hls_segment_filename')
+        ffmpeg_command.append(os.path.join(destFolder, f'{tsPrefix}_%04d.ts'))
+    ffmpeg_command.append(os.path.join(destFolder, m3u8name))
+
+    print('initStreamOutput', ' '.join(ffmpeg_command))
+    ffmpeg_process = subprocess.Popen(ffmpeg_command, stdin=subprocess.PIPE)
+    return ffmpeg_process
+
+def WriteFrameAsStream(ffmpeg_process, videoPath):
+    """
+    写入帧到ffmpeg的标准输入
+    :param ffmpeg_process: ffmpeg子进程对象
+    :param videoPath: 视频路径
+    :return:
+    """
+    cap = cv2.VideoCapture(videoPath)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        # 将每一帧写入FFmpeg的标准输入
+        ffmpeg_process.stdin.write(frame.tobytes())

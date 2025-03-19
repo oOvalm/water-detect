@@ -7,9 +7,6 @@ from ultralytics import YOLO
 
 from common.annotation import singleton
 from waterDetect import settings
-from yolo.yolo_model.video_utils import ts_to_avi
-
-
 
 USE_MOCK = True
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')

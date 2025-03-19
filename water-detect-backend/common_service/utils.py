@@ -1,3 +1,7 @@
+import os
+import subprocess
+
+import cv2
 from captcha.models import CaptchaStore
 
 # 验证验证码
