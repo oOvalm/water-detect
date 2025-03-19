@@ -19,7 +19,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 
 
-from online_stream.service import analyse_stream, rtmp_host, capture_ori_stream
+from online_stream.service import analyse_stream, rtmp_host, capture_streamNanalyse, GetStreamM3U8Path
 from waterDetect import settings
 
 
@@ -93,18 +93,19 @@ def startCaptureStream(request):
     return Response("ok!")
 
 @api_view(['GET'])
-def rtmpAuth(request):
+def rtmpPublish(request):
     print(request.GET)
     username = request.GET.get('username')
     password = request.GET.get('password')
     app = request.GET.get('app')
     call = request.GET.get('call')
     stream_name = request.GET.get('name')
-    # if username != password:
-    #     return HttpResponse("no auth", status=403)
-    # if app == 'live' and call == 'publish':
-    #     thread = threading.Thread(target=start_resolve_stream, args=(str(stream_name),))
-    #     thread.start()
+    # todo: 鉴权
+    if app == 'live' and call == 'publish':
+        # 异步开启监听
+        thread = threading.Thread(target=capture_streamNanalyse,
+                         args=(app, stream_name, threading.Event(), queue.Queue()))
+        thread.start()
     return HttpResponse("ok", status=200)
 
 def rtmpPublishDone(request):
@@ -117,10 +118,17 @@ def rtmpPublishDone(request):
 
 
 @csrf_exempt
+@api_view(['GET'])
 def stream_proxy(request, app, stream_key):
     try:
+        isAnalyse = request.GET.get('analyse')
+        if isAnalyse == 'true' or isAnalyse == 'false':
+            m3u8Path = GetStreamM3U8Path(app, stream_key, isAnalyse == 'true')
+            if m3u8Path is None:
+                return HttpResponse("analyse not start", status=404)
+            return HttpResponse(m3u8Path, content_type='text/plain')
         event, que = threading.Event(), queue.Queue()
-        threading.Thread(target=capture_ori_stream, args=(app, stream_key,event,que,)).start()
+        threading.Thread(target=capture_streamNanalyse, args=(app, stream_key, event, que,)).start()
         event.wait()
         path = que.get()
         if path.startswith('error'):

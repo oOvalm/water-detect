@@ -20,7 +20,7 @@ class AnalyseStatus(Enum):
 class GetAnalyseProcess(APIView):
     def get(self, request, fileUID):
         userID = request.user.id
-        analyseProcess = redis.GetAnalyseProcess(fileUID)
+        analyseProcess = redisService.GetAnalyseProcess(fileUID)
         if analyseProcess is not None:
             analyseProcess['analyseStatus'] = AnalyseStatus.Analysing.value
             return NewSuccessResponse(analyseProcess)

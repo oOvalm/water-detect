@@ -114,8 +114,6 @@ if __name__ == "__main__":
     TestCV2()
 
 r"""
-
 ffmpeg开启推流
 ffmpeg.exe -re -i "D:\Videos\2024-02-01 19-21-23.mp4" -vcodec libx264 -acodec aac -f flv rtmp://127.0.0.1:1935/live/home
-
 """

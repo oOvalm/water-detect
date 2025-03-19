@@ -1,7 +1,11 @@
 import logging
 import os
 
-from moviepy import VideoFileClip
+import ffmpeg
+from moviepy.editor import VideoFileClip
+
+from common.ProcessUtils import execute_command
+
 logger = logging.getLogger(__name__)
 
 def avi_to_ts(input_file, output_file):
@@ -12,11 +16,14 @@ def avi_to_ts(input_file, output_file):
     :param output_file: 输出的TS文件路径
     """
     print('start convert avi to ts', input_file, output_file)
-    # 加载AVI视频文件
-    clip = VideoFileClip(input_file)
-    clip.write_videofile(output_file, codec='libx264', audio_codec='aac')
-    # 关闭视频剪辑对象以释放资源
-    clip.close()
+    cmd = [
+        'ffmpeg',
+        '-i', input_file,
+        '-c:v', 'libx264',
+        '-c:a', 'aac',
+        output_file
+    ]
+    execute_command(cmd, True)
 
 def ts_to_avi(input_file, output_file):
     try:
@@ -37,7 +44,7 @@ def merge_video_files(input_folder, output_file, src_file_type):
     :param input_folder: 包含TS视频文件的文件夹路径
     :param output_file: 合并后视频文件的输出路径
     """
-    from moviepy import VideoFileClip, concatenate_videoclips
+    from moviepy.editor import VideoFileClip, concatenate_videoclips
     logger.info(f"start merge {src_file_type} to mp4, src_folder: {input_folder}, destFileName: {output_file}")
     # 获取文件夹中所有的TS文件
     ts_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith(f'.{src_file_type}')]

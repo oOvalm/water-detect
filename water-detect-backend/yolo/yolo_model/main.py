@@ -4,11 +4,12 @@ import shutil
 import threading
 import time
 from ultralytics import YOLO
-from moviepy import VideoFileClip
+from moviepy.editor import VideoFileClip
 
 from common.annotation import singleton
 from common.db_model import FileType
 from common_service import redisService
+from common_service.redisService import GetDefaultRedis
 from waterDetect import settings
 from yolo.yolo_model.analyse import GetFromModel
 from yolo.yolo_model.video_utils import avi_to_ts, merge_video_files
@@ -31,7 +32,7 @@ class singleYOLO(YOLO):
 logger = logging.getLogger(__name__)
 
 
-def AnalyseVideo(path: str, fileUID: str):
+def AnalyseTsVideoFolder(path: str, fileUID: str):
     from common_service.fileService import FileManager
     logger.info(f"start analyse video {fileUID}")
     tempAnalyseFolder = os.path.join(BASE_TMP, fileUID)
@@ -39,7 +40,7 @@ def AnalyseVideo(path: str, fileUID: str):
     files = os.listdir(path)
     threads = []
 
-    redis.UploadAnalyseProcess(fileUID, total=len(files), finished=0)
+    redisService.UploadAnalyseProcess(fileUID, total=len(files), finished=0)
     if not os.path.exists(destFolder):
         os.makedirs(destFolder)
     originM3U8 = os.path.join(path, 'index.m3u8')
@@ -63,7 +64,7 @@ def AnalyseVideo(path: str, fileUID: str):
                     filename))
             thread.start()
             threads.append(thread)
-        redis.UploadAnalyseProcess(fileUID, total=len(files), finished=i+1)
+        redisService.UploadAnalyseProcess(fileUID, total=len(files), finished=i+1)
 
     # 等待所有线程完成
     for thread in threads:

@@ -1,6 +1,7 @@
 <template>
   <div>
     <el-input v-model="streamKey" placeholder="请输入 streamkey"/>
+    <el-checkbox v-model="isAnalyse" label="是否分析后" size="small"/>
     <el-button @click="playStream">确认</el-button>
     <div ref="playerContainer"></div>
   </div>
@@ -14,11 +15,17 @@ import Hls from "hls.js";
 import httpRequest from "@/api/httpRequest.ts";
 import message from "@/utils/Message.js";
 
+const isAnalyse = ref(false);
 const streamKey = ref('');
 const playerContainer = ref(null);
 let dp = null;
+
 const playStream = () => {
-  httpRequest.get(`/stream/proxy/live/${streamKey.value}`).then(({data}) => {
+  if (dp) {
+    dp.destroy();
+    dp = null;
+  }
+  httpRequest.get(`/stream/proxy/live/${streamKey.value}?analyse=${isAnalyse.value}`).then(({data}) => {
     const hlsUrl = `/api/stream/${data}`;
     dp = new DPlayer({
       container: playerContainer.value,

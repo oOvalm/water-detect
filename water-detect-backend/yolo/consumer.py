@@ -6,7 +6,7 @@ import pika
 from common.db_model import FileType
 from common.mqModels import AnalyseTask
 from waterDetect import settings
-from yolo.yolo_model.main import AnalyseVideo
+from yolo.yolo_model.main import AnalyseTsVideoFolder
 
 
 def initYoloConsumer():
@@ -49,7 +49,7 @@ def consumeHandler(ch, method, properties, body):
             return
 
         if mqInfo.fileType == FileType.Video.value:
-            analysedUID, size = AnalyseVideo(tsFolder, mqInfo.fileUID)
+            analysedUID, size = AnalyseTsVideoFolder(tsFolder, mqInfo.fileUID)
             FileInfo.objects.createAnalysedFile(mqInfo.fileID, analysedUID, size)
         else:
             logger.error(f"not support file type {mqInfo.fileType}")

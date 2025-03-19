@@ -46,7 +46,7 @@ class PrintStream(Thread):
 
 def execute_command(cmd, outprint_log=False):
     if is_empty(cmd):
-        logger.error("--- 指令执行失败，因为要执行的 FFmpeg 指令为空! ---")
+        logger.error("--- execute command fail! len(cmd)==0 ---")
         return None
 
     process = None

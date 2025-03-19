@@ -6,12 +6,14 @@ from datetime import datetime
 import cv2
 
 from common.ProcessUtils import execute_command
+from common.utils import get_video_duration
 from common_service import redisService
 from common_service.lock import RedisLock
 from common_service.redisService import GetDefaultRedis
+from online_stream.stream_m3u8 import stream_m3u8
 from waterDetect import settings
 from yolo.yolo_model.analyse import AnalyseImage, GetFromModel
-from yolo.yolo_model.video_utils import merge_video_files
+from yolo.yolo_model.video_utils import merge_video_files, avi_to_ts
 
 rtmp_host = f"{settings.NGINX_CONFIG['host']}:{settings.NGINX_CONFIG['rtmp_port']}"
 
@@ -121,57 +123,72 @@ def save_frameList(frames, outputPath, fps):
     out.release()
 
 
-def capture_ori_stream(app, stream_key, event, que):
+def capture_streamNanalyse(app, stream_key, event, que):
+    process = None
     try:
         stream_name = f"{app}_{stream_key}"
+        log.info(f"start capture {stream_name}")
+        # 抢流的监听锁
         with RedisLock(GetDefaultRedis(), f"capture_ori_stream:{stream_name}", expire=5) as r:
             hls_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}"
+            # 拿不到锁直接返回
             if not r.is_acquired:
                 print('get lock fail')
-                folders = os.listdir(hls_folder)
-                folders.sort()
-                hls_path = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}\\{folders[-1]}\\stream_{stream_key}.m3u8"
-                if not os.path.exists(hls_path):
-                    que.put(f'error bizError')
+                m3u8Path = GetStreamM3U8Path(app, stream_key, False)
+                if m3u8Path is None:
+                    que.put(f'm3u8 not found')
                 else:
-                    que.put(f'hls\\{stream_name}\\{folders[-1]}\\stream_{stream_key}.m3u8')
+                    que.put(m3u8Path)
                 event.set()
                 return
+
+            # 搞一下文件夹
             rtmp_url = f"rtmp://{rtmp_host}/{app}/{stream_key}"
             currentTimeStr = datetime.now().strftime("%Y%m%d%H%M%S")
+            stream_base_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}"
             hls_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}\\{currentTimeStr}"
+            analyse_hls_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}\\{currentTimeStr}_analyse"
             hls_path = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}\\{currentTimeStr}\\stream_{stream_key}.m3u8"
-            if not os.path.exists(f"{settings.MEDIA_ROOT}\\hls\\{stream_name}"):
-                os.makedirs(f"{settings.MEDIA_ROOT}\\hls\\{stream_name}")
+            if not os.path.exists(stream_base_folder):
+                os.makedirs(stream_base_folder)
             if not os.path.exists(hls_folder):
                 os.makedirs(hls_folder)
+            if not os.path.exists(analyse_hls_folder):
+                os.makedirs(analyse_hls_folder)
+
+            # 开个子进程抓流，转为hls
             command = [
                 settings.FFMPEG_PATH,
-                '-loglevel', 'debug',  # 添加详细日志级别
                 '-i', rtmp_url,
+                '-rw_timeout', '5000000',
                 '-c:v', 'libx264',
                 '-c:a', 'aac',
+                '-b:v', '500k',  # 设置视频比特率
                 '-f', 'hls',
                 '-hls_time', '10',
                 '-hls_list_size', '6',
                 hls_path
             ]
             print(' '.join(command))
-            # execute_command(command, outprint_log=True)
             process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-            time.sleep(4)
+            # 返回
             if process.poll() is not None :
                 print(f"ffmpeg error: {process.poll()}")
-                que.put(f'error bizError')
+                que.put(f'capture stream failure')
                 event.set()
                 return
             if not os.path.exists(hls_path):
-                que.put(f'error bizError')
+                que.put(f'capture not start')
             else:
-                que.put(f'hls\\{stream_name}\\{currentTimeStr}\\stream_{stream_key}.m3u8')
+                que.put(f'hls/{stream_name}/{currentTimeStr}/stream_{stream_key}.m3u8')
             event.set()
-            currentID = 0
-            failTime = 0
+
+            # 当前线程扫ts文件，进行检测
+            currentID, failTime = 0, 0
+
+            analyse_m3u8_path = os.path.join(analyse_hls_folder, f"analysed_stream_{stream_key}.m3u8")
+            analyse_m3u8 = stream_m3u8(analyse_m3u8_path, 6)
+
             while True:
                 oriPath = os.path.join(hls_folder, f"stream_{stream_key}{currentID}.ts")
                 if not os.path.exists(oriPath):
@@ -182,19 +199,52 @@ def capture_ori_stream(app, stream_key, event, que):
                         # 子进程运行完成了 && 没有未解析的文件, 退出
                         print(f"ffmpeg process exited with return code {process_return_code}")
                         break
-                    if not os.path.exists(hls_path) and failTime > 5*30:
-                        print(f"hls file not exist: {hls_path}, maybe ffmpeg process failed, kill subprocess")
+                    if failTime > 5*30:
+                        print(f"cannot get new file for a long time: {hls_path}, maybe ffmpeg process failed, kill subprocess")
                         process.kill()
                         break
                     time.sleep(10)
                     continue
-                GetFromModel(oriPath, f"stream_{stream_key}{currentID}", stream_name)
+                # 更新m3u8文件
+                analyseFilename = f"analysed_stream_{stream_key}{currentID}.ts"
+                duration = AnalyseVideoForStreamTs(oriPath, stream_key, stream_name,
+                                        currentID, currentTimeStr,
+                                        os.path.join(analyse_hls_folder, analyseFilename))
+                analyse_m3u8.push(analyseFilename, duration)
+                analyse_m3u8.write()
+                failTime = 0
                 currentID += 1
+            analyse_m3u8.done()
+            analyse_m3u8.write()
     except Exception as e:
         print("capture_ori_stream error", e)
     finally:
-        if process.poll() is not None:
+        if process is not None and process.poll() is not None:
             process.kill()
         print('capture return')
         if not event.is_set():
             event.set()
+
+
+def GetStreamM3U8Path(app, stream_key, isAnalyse=False):
+    stream_name = f"{app}_{stream_key}"
+    hls_folder = f"{settings.MEDIA_ROOT}\\hls\\{stream_name}"
+    folders = os.listdir(hls_folder)
+    if isAnalyse:
+        folders = [f for f in folders if f.endswith('_analyse')]
+    else:
+        folders = [f for f in folders if not f.endswith('_analyse')]
+    folders.sort()
+    hls_path = f"hls/{stream_name}/{folders[-1]}/{'analysed_' if isAnalyse else ''}stream_{stream_key}.m3u8"
+    if os.path.exists(os.path.join(settings.MEDIA_ROOT, hls_path)):
+        return hls_path
+    else:
+        return None
+
+def AnalyseVideoForStreamTs(srcPath, stream_key, stream_name, currentID, streamTimeStr, destPath):
+    videoPath = GetFromModel(srcPath, f"stream_{stream_key}{currentID}", f"{stream_name}_{streamTimeStr}")
+    # 获取path的ts视频文件的时长
+    avi_to_ts(videoPath, destPath)
+    # 移除文件
+    # os.remove(videoPath)
+    return get_video_duration(destPath)

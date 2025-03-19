@@ -5,7 +5,7 @@ import time
 
 import torch
 
-from yolo.yolo_model.main import AnalyseVideo, merge_video_files
+from yolo.yolo_model.main import AnalyseTsVideoFolder, merge_video_files
 
 
 def TestYoloAnalyse():
@@ -15,7 +15,7 @@ def TestYoloAnalyse():
         # r'D:\coding\graduation-design\water-detect\media\cuts\0da9640b-4f42-4717-b995-f8e089924e7e\0da9640b-4f42-4717-b995-f8e089924e7e_0000.ts'
     ]
     for c in paths:
-        AnalyseVideo(c, '2b2f2051-f52a-4dd7-b7a8-ba6cada07d4a')
+        AnalyseTsVideoFolder(c, '2b2f2051-f52a-4dd7-b7a8-ba6cada07d4a')
     print('done')
     time.sleep(5)
     print('exit')

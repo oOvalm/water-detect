@@ -1,15 +1,18 @@
-from captcha.models import CaptchaStore
+import math
 
-# 验证验证码
-def jarge_captcha(captchaStr, captchaHashkey):
-    if captchaStr and captchaHashkey:
-        try:
-            # 获取根据hashkey获取数据库中的response值
-            get_captcha = CaptchaStore.objects.get(hashkey=captchaHashkey)
-            if get_captcha.response == captchaStr.lower():  # 如果验证码匹配
-                return True
-        except:
-            return False
-    else:
-        return False
+from moviepy.editor import VideoFileClip
 
+
+def get_video_duration(file_path):
+    try:
+        clip = VideoFileClip(file_path)
+        duration = clip.duration
+        clip.close()
+        return round(duration, 6)
+    except Exception as e:
+        print(f"get_video_duration error: {e}")
+        return None
+
+if __name__ == '__main__':
+    duration = get_video_duration(r'D:\coding\graduation-design\water-detect\media\hls\live_remote\20250319164146\stream_remote98.ts')
+    print("%.9f" % duration)
