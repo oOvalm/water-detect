@@ -38,6 +38,8 @@ else
 end
 """
 
+LOCK_PREFIX = "water-detect-RedisLock"
+
 class RedisLock:
     """
     redis实现互斥锁，支持重入和续锁
@@ -50,7 +52,7 @@ class RedisLock:
         self.renew_script = None
         self.register_script()
 
-        self._name = f"lock:{lock_name}"
+        self._name = f"{LOCK_PREFIX}:{lock_name}"
         self._expire = int(expire)
         self._uid = uid or str(uuid.uuid4())
 
@@ -134,6 +136,11 @@ class RedisLock:
 
     def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
         self.release()
+
+    @staticmethod
+    def is_locked(redisConn, lock_name):
+        return redisConn.exists(f"{LOCK_PREFIX}:{lock_name}")
+
 
 custom_redis = None
 def _run_work(my_user_id):

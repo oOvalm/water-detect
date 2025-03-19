@@ -1,4 +1,6 @@
 import base64
+import http
+import logging
 import queue
 import subprocess
 import threading
@@ -13,15 +15,20 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import viewsets, filters
 from rest_framework.pagination import PageNumberPagination
+
+from common_service import redisService
+from common_service.lock import RedisLock
+from common_service.redisService import GetDefaultRedis
 from database.models import StreamKeyInfo
 from database.serializers import StreamKeyInfoSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 
 
-from online_stream.service import analyse_stream, rtmp_host, capture_streamNanalyse, GetStreamM3U8Path
+from online_stream.service import rtmp_host, capture_streamNanalyse, GetStreamM3U8Path
 from waterDetect import settings
 
+log = logging.getLogger(__name__)
 
 def ResolveFrame(frame):
     print(type(frame))
@@ -85,12 +92,6 @@ def start_resolve_stream(stream_name: str):
         print(e)
 
 
-@api_view(['GET'])
-def startCaptureStream(request):
-    stream_name = request.GET['stream_name']
-    thread = threading.Thread(target=analyse_stream, args=(str(stream_name),))
-    thread.start()
-    return Response("ok!")
 
 @api_view(['GET'])
 def rtmpPublish(request):
@@ -101,6 +102,9 @@ def rtmpPublish(request):
     call = request.GET.get('call')
     stream_name = request.GET.get('name')
     # todo: 鉴权
+
+    if RedisLock.is_locked(GetDefaultRedis(), f"capture_ori_stream:{app}_{stream_name}"):
+        return HttpResponse('stream has been started', status=403)
     if app == 'live' and call == 'publish':
         # 异步开启监听
         thread = threading.Thread(target=capture_streamNanalyse,
@@ -109,9 +113,9 @@ def rtmpPublish(request):
     return HttpResponse("ok", status=200)
 
 def rtmpPublishDone(request):
-    app = request.GET['app']
+    app = request.GET.get('app')
     stream_name = request.GET.get('name')
-    print(app, stream_name)
+    redisService.SetStreamDone(f"{app}_{stream_name}")
     return HttpResponse("ok", status=200)
 
 
@@ -121,21 +125,15 @@ def rtmpPublishDone(request):
 @api_view(['GET'])
 def stream_proxy(request, app, stream_key):
     try:
+        if not RedisLock.is_locked(GetDefaultRedis(), f"capture_ori_stream:{app}_{stream_key}"):
+            return HttpResponse('stream not start', status=404)
         isAnalyse = request.GET.get('analyse')
-        if isAnalyse == 'true' or isAnalyse == 'false':
-            m3u8Path = GetStreamM3U8Path(app, stream_key, isAnalyse == 'true')
-            if m3u8Path is None:
-                return HttpResponse("analyse not start", status=404)
-            return HttpResponse(m3u8Path, content_type='text/plain')
-        event, que = threading.Event(), queue.Queue()
-        threading.Thread(target=capture_streamNanalyse, args=(app, stream_key, event, que,)).start()
-        event.wait()
-        path = que.get()
-        if path.startswith('error'):
-            return HttpResponse(path, status=500)
-        # 返回 HLS 流的 URL 给前端
-        return HttpResponse(path, content_type='text/plain')
+        m3u8Path = GetStreamM3U8Path(app, stream_key, isAnalyse == 'true')
+        if m3u8Path is None:
+            return HttpResponse("analyse not start", status=404)
+        return HttpResponse(m3u8Path, content_type='text/plain')
     except Exception as e:
+        log.error(e)
         return HttpResponse(f"Error: {str(e)}", status=500)
 
 

@@ -1,13 +1,16 @@
 import json
+import logging
 from enum import Enum
 
 from rest_framework.views import APIView
 
+from common.constants import INTERNAL_ERROR
 from common.customResponse import NewErrorResponse, NewSuccessResponse
 from common.db_model import AnalyseFileType
 from common_service import redisService
 from database.models import FileInfo
 
+log = logging.getLogger(__name__)
 
 # Create your views here.
 class AnalyseStatus(Enum):
@@ -19,31 +22,37 @@ class AnalyseStatus(Enum):
 
 class GetAnalyseProcess(APIView):
     def get(self, request, fileUID):
-        userID = request.user.id
-        analyseProcess = redisService.GetAnalyseProcess(fileUID)
-        if analyseProcess is not None:
-            analyseProcess['analyseStatus'] = AnalyseStatus.Analysing.value
-            return NewSuccessResponse(analyseProcess)
-
-        fileInfo = FileInfo.objects.filter(file_uid=fileUID, user_id=userID).first()
-        if fileInfo is None:
-            return NewErrorResponse(400, "origin file not found")
         try:
-            extra = json.loads(fileInfo.extra.decode('utf-8'))
-        except Exception as e:
-            return NewSuccessResponse({
-                "fileUID": fileUID,
-                "analyseStatus":AnalyseStatus.Waiting.value,
-            })
+            userID = request.user.id
+            analyseProcess = redisService.GetAnalyseProcess(fileUID)
+            if analyseProcess is not None:
+                analyseProcess['analyseStatus'] = AnalyseStatus.Analysing.value if analyseProcess['finished'] > 0 else AnalyseStatus.Waiting.value
+                return NewSuccessResponse(analyseProcess)
 
-        if extra['analyse_type'] == AnalyseFileType.Analysed:
-            return NewErrorResponse(400, "wrong file type")
-        if extra['opposite_id'] != 0:
+            fileInfo = FileInfo.objects.filter(file_uid=fileUID, user_id=userID).first()
+            if fileInfo is None:
+                return NewErrorResponse(400, "origin file not found")
+            try:
+                if fileInfo.extra is None or len(fileInfo.extra) == 0:
+                    raise Exception("extra is empty")
+                extra = json.loads(fileInfo.extra.decode('utf-8'))
+            except Exception as e:
+                return NewSuccessResponse({
+                    "fileUID": fileUID,
+                    "analyseStatus":AnalyseStatus.Waiting.value,
+                })
+
+            if extra['analyse_type'] == AnalyseFileType.Analysed.value:
+                return NewErrorResponse(400, "wrong file type")
+            if extra['opposite_id'] != 0:
+                return NewSuccessResponse({
+                    "fileUID": fileUID,
+                    "analyseStatus":AnalyseStatus.Done.value,
+                })
             return NewSuccessResponse({
                 "fileUID": fileUID,
-                "analyseStatus":AnalyseStatus.Done.value,
+                "analyseStatus":AnalyseStatus.NotStart.value,
             })
-        return NewSuccessResponse({
-            "fileUID": fileUID,
-            "analyseStatus":AnalyseStatus.NotStart.value,
-        })
+        except Exception as e:
+            log.error(e)
+            return NewErrorResponse(500, INTERNAL_ERROR)

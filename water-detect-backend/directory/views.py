@@ -8,10 +8,11 @@ from django.core.cache import cache
 from django.db import transaction
 from django.http import FileResponse, StreamingHttpResponse
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common import constants
-from common.constants import UploadFileStatus
+from common.constants import UploadFileStatus, INTERNAL_ERROR
 from common.customError import InternalServerError, ParamError
 from common.db_model import FileType, FileStatus
 from common.mqModels import AnalyseTask
@@ -263,9 +264,10 @@ class GetFileView(APIView):
                     file = open(path, 'rb')
                     return FileResponse(file)
                 else:
-                    return NewErrorResponse(400, "todo file type")
+                    return Response("not support file type", status=400)
         except Exception as e:
             print(f'GetFileView error: {e}')
+            return Response(INTERNAL_ERROR, status=500)
 
 class DownloadFileView(APIView):
     def get(self, request, fileID):

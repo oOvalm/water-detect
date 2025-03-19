@@ -1,5 +1,6 @@
 from django import forms
 
+from common_service.redisService import GetDefaultRedis
 from database.models import User
 from common_service import utils
 
@@ -20,7 +21,7 @@ class RegisterForm(forms.Form):
         if password != confirmPassword:
             self.add_error('confirmPassword', '密码不一致')
             return
-        redisCaptcha = redis.GetEmailCaptcha(email)
+        redisCaptcha = GetDefaultRedis().GetEmailCaptcha(email)
         if not redisCaptcha or redisCaptcha != emailCaptcha:
             self.add_error('emailCaptcha', '验证码错误')
             return

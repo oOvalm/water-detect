@@ -20,3 +20,11 @@ def UploadAnalyseProcess(fileUID, **kwargs):
 
 def GetAnalyseProcess(fileUID):
     return json.loads(GetDefaultRedis().get(f"upload-analyse-process:{fileUID}"))
+
+def SetStreamDone(streamKey):
+    GetDefaultRedis().set(f"stream-done:{streamKey}", "true", constants.DAY)
+def GetStreamDone(streamKey):
+    return GetDefaultRedis().get(f"stream-done:{streamKey}")
+def DoneStreamDone(streamKey):
+    GetDefaultRedis().delete(f"stream-done:{streamKey}")
+

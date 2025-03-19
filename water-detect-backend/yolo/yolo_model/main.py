@@ -1,21 +1,14 @@
 import logging
 import os
 import shutil
-import threading
-import time
 from ultralytics import YOLO
-from moviepy import VideoFileClip
 
 from common.annotation import singleton
 from common.db_model import FileType
 from common_service import redisService
-from common_service.redisService import GetDefaultRedis
+from common.video_utils import InitStreamOutput, WriteFrameAsStream, merge_video_files
 from waterDetect import settings
 from yolo.yolo_model.analyse import GetFromModel
-from yolo.yolo_model.video_utils import avi_to_ts, merge_video_files
-
-USE_MOCK = False
-
 
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
@@ -43,32 +36,18 @@ def AnalyseTsVideoFolder(path: str, fileUID: str):
     redisService.UploadAnalyseProcess(fileUID, total=len(files), finished=0)
     if not os.path.exists(destFolder):
         os.makedirs(destFolder)
-    originM3U8 = os.path.join(path, 'index.m3u8')
-    destM3U8 = os.path.join(destFolder, 'index.m3u8')
-    if os.path.exists(originM3U8):
-        # 写一份解析后的m3u8文件
-        RewriteM3U8(originM3U8, destM3U8)
-    else:
-        logger.warning(f"index.m3u8 not found {originM3U8}")
+
+    output_process = None
 
     for i, file in enumerate(files):
         if file.endswith('.ts'):
             filename = f"analysed_{file.split('.')[0]}"
             GetFromModel(os.path.join(path, file), filename, fileUID)
-            # 启动一个线程
-            thread = threading.Thread(
-                target=resolveDoneVideo,
-                args=(
-                    os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
-                    destFolder,
-                    filename))
-            thread.start()
-            threads.append(thread)
+            # todo: 模型用gpu计算后, 这可以用线程处理
+            output_process = resolveDoneVideo(output_process, os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
+                             destFolder, filename)
         redisService.UploadAnalyseProcess(fileUID, total=len(files), finished=i+1)
 
-    # 等待所有线程完成
-    for thread in threads:
-        thread.join()
     if os.path.exists(tempAnalyseFolder):
         shutil.rmtree(tempAnalyseFolder)  # 删除临时文件夹
     else:
@@ -88,6 +67,9 @@ def RewriteM3U8(src: str, dest: str):
                 newLine = f"analysed_{line.split('.')[0]}.ts\n"
             f.write(newLine)
 
-def resolveDoneVideo(videoPath, destFolder, filename):
-    avi_to_ts(videoPath, os.path.join(destFolder, f"{filename}.ts"))
-
+def resolveDoneVideo(output_process, videoPath, destFolder, filename):
+    if output_process is None:
+        ffname = filename.rsplit("_", 1)[0]
+        output_process = InitStreamOutput(videoPath, destFolder, 'index.m3u8', tsPrefix=ffname)
+    WriteFrameAsStream(output_process, videoPath)
+    return output_process

@@ -104,7 +104,6 @@ class FileInfoManager(models.Manager):
             streamFolder.folder_type = SystemFolder.StreamReplayFolder.value
             streamFolder.save()
         fileinfo = FileInfo(
-            file_status=0,
             size = fileSize,
             file_pid = streamFolder.id,
             file_type=FileType.Video.value,
