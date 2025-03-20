@@ -97,6 +97,34 @@
         <el-form-item label="创建时间">
           <el-input v-model="detailFormData.create_time" readonly></el-input>
         </el-form-item>
+        <el-form-item label="观看授权范围">
+          <el-radio-group v-model="detailFormData.authType">
+            <el-radio :label="3">所有人</el-radio>
+            <el-radio :label="2">指定范围</el-radio>
+            <el-radio :label="1">仅自己</el-radio>
+          </el-radio-group>
+
+        </el-form-item>
+        <el-form-item label="">
+          <el-select
+              v-if="detailFormData.authType === 2"
+              v-model="detailFormData.authUsers"
+              multiple
+              filterable
+              default-first-option
+              :reserve-keyword="false"
+              allow-create
+              placeholder="请选择授权的用户邮箱"
+          >
+            <!--            <el-option-->
+            <!--                v-for="name in names"-->
+            <!--                :key="name"-->
+            <!--                :label="name"-->
+            <!--                :value="name"-->
+            <!--            >-->
+            <!--            </el-option>-->
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
