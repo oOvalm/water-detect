@@ -10,15 +10,18 @@
             placement="top"
             title="提示信息"
             trigger="hover"
+            :width="400"
         >
           <template #reference>
             <el-icon>
               <QuestionFilled/>
             </el-icon>
           </template>
-          <template #content>
-            todo
-          </template>
+          <div>本系统使用的推流协议为 rtmp 协议</div>
+          <div>推流服务器 ip 地址为 <code>8.148.229.47</code>，rtmp 端口为 <code>1935</code></div>
+          <div>推流链接为 <code>rtmp://8.148.229.47:1935/live/${唯一标识符}</code></div>
+          <div>如果你使用 obs 进行推流，服务器地址为 <code>rtmp://8.148.229.47:1935/live</code>，串流密钥为唯一标识符
+          </div>
         </el-popover>
         如何使用推流？
       </el-col>
@@ -81,7 +84,7 @@
       </template>
     </el-dialog>
     <el-dialog v-model="detailDialogVisible" title="详情">
-      <el-form :model="detailFormData" label-width="80px">
+      <el-form :model="detailFormData" label-width="100px">
         <el-form-item label="流名称">
           <el-input v-model="detailFormData.stream_name"></el-input>
         </el-form-item>
@@ -109,7 +112,8 @@
 import {ref, reactive, onMounted} from 'vue';
 import {ElTable, ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElPagination, ElMessageBox} from 'element-plus';
 import httpRequest from "@/api/httpRequest.ts";
-import {QuestionFilled} from '@element-plus/icons-vue'
+import {QuestionFilled} from '@element-plus/icons-vue';
+import {formatDate} from "@/utils/Utils.ts"
 
 // 当前显示的表格数据
 const currentTableData = ref([]);
@@ -151,7 +155,11 @@ const detailFormData = reactive({
 const fetchData = async () => {
   try {
     const response = await httpRequest.get(`/stream/streamkeyinfo/?page=${pageNo.value}&page_size=${pageSize.value}`);
-    currentTableData.value = response.data.results;
+    const formattedData = response.data.results.map(row => {
+      row.create_time = formatDate(row.create_time);
+      return row;
+    });
+    currentTableData.value = formattedData;
     totalCount.value = response.data.count;
   } catch (error) {
     console.error('获取数据失败:', error);
@@ -260,4 +268,16 @@ onMounted(async () => {
   margin-top: 10px;
   float: right;
 }
+
+.code-container {
+  position: relative;
+}
+
+.code-container button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  margin-left: 5px;
+}
+
 </style>

@@ -166,6 +166,7 @@ import {ElMessageBox} from "element-plus";
 import Navigation from "@/components/Navigation.vue";
 import Preview from "@/components/preview/Preview.vue";
 import {useRouter} from "vue-router";
+import {formatDate} from "@/utils/Utils.ts";
 
 const emit = defineEmits(["addFile"]);
 const showLoading = ref(false)
@@ -234,6 +235,12 @@ const loadDataList = () => {
       throw data.msg
     }
     tableData.value = data.data
+    const formattedData = data.data.list.map(row => {
+      row.update_time = formatDate(row.update_time);
+      row.create_time = formatDate(row.create_time);
+      return row;
+    });
+    tableData.value.list = formattedData
     console.log(tableData.value)
   }).catch((e) => {
     console.log(e);
