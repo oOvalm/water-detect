@@ -34,6 +34,7 @@ class LocalFileService():
         'thumbnail',
         'tmp',
         'cuts',
+        'avatar',
     ]
     def __init__(self):
         for folder in LocalFileService.folders:
@@ -155,8 +156,8 @@ class LocalFileService():
         return self._getFilePath(fileUID, "ts", tsName=tsName)
     def getThumbnailPath(self, fileUID):
         return self._getFilePath(fileUID, "thumbnail")
-    def GetFilePath(self, fileInfo, fileType):
-        fileUID = fileInfo.file_uid
+    def GetFilePath(self, fileInfo):
+        fileUID, fileType = fileInfo.file_uid, fileInfo.file_type
         fileSuffix = GetFileSuffix(fileInfo.filename)
         if fileType == FileType.Video.value:
             return self._getFilePath(fileUID, "video", suffix=fileSuffix)
@@ -181,6 +182,17 @@ class LocalFileService():
     def GetFileSize(self, filePath):
         # 获取路径下文件大小
         return os.path.getsize(filePath)
+
+    def saveAvatar(self, file):
+        avatarRoot = os.path.join(settings.MEDIA_ROOT, 'avatar')
+        if not os.path.exists(avatarRoot):
+            os.makedirs(avatarRoot)
+        fileID = uuid.uuid4().__str__()
+        file_path = os.path.join(avatarRoot, f"user_avatar_{fileID}.{GetFileSuffix(file.name)}")
+        with open(file_path, 'wb+') as destination:
+            for chunk in file.chunks():
+                destination.write(chunk)
+        return f'avatar/user_avatar_{fileID}.{GetFileSuffix(file.name)}'
 
 
 _fileManager = None

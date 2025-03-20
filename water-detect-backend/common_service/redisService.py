@@ -11,7 +11,7 @@ def SetEmailCaptcha(email, code):
     GetDefaultRedis().set(f"email-captcha:{email}", code, constants.MINUTE*60)
 
 def GetEmailCaptcha(email):
-    return GetDefaultRedis().get(f"email-captcha:{email}")
+    return str(GetDefaultRedis().get(f"email-captcha:{email}").decode())
 
 def UploadAnalyseProcess(fileUID, **kwargs):
     # 转成字符串

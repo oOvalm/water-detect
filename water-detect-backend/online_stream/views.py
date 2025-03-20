@@ -62,7 +62,7 @@ def start_resolve_stream(stream_name: str):
             '-s', f'{width}x{height}',
             '-r', str(fps),
             '-i', '-',
-            '-c:v', 'libx264',
+            '-c:v', 'h264_amf',
             '-preset', 'ultrafast',
             '-tune', 'zerolatency',
             '-f', 'flv',

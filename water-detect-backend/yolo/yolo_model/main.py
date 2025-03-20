@@ -1,6 +1,10 @@
 import logging
 import os
 import shutil
+import threading
+
+import numpy as np
+from PIL import Image
 from ultralytics import YOLO
 
 from common.annotation import singleton
@@ -8,7 +12,7 @@ from common.db_model import FileType
 from common_service import redisService
 from common.video_utils import InitStreamOutput, WriteFrameAsStream, merge_video_files
 from waterDetect import settings
-from yolo.yolo_model.analyse import GetFromModel
+from yolo.yolo_model.analyse import GetFromModel, AnalyseImage
 
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
@@ -44,10 +48,18 @@ def AnalyseTsVideoFolder(path: str, fileUID: str):
             filename = f"analysed_{file.split('.')[0]}"
             GetFromModel(os.path.join(path, file), filename, fileUID)
             # todo: 模型用gpu计算后, 这可以用线程处理
-            output_process = resolveDoneVideo(output_process, os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
-                             destFolder, filename)
+            if True:
+                output_process = resolveDoneVideo(output_process, os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
+                                 destFolder, filename)
+            else:
+                thread = threading.Thread(target=resolveDoneVideo, args=(output_process, os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
+                                 destFolder, filename,))
+                thread.start()
+                threads.append(thread)
         redisService.UploadAnalyseProcess(fileUID, total=len(files), finished=i+1)
 
+    for thread in threads:
+        thread.join()
     if os.path.exists(tempAnalyseFolder):
         shutil.rmtree(tempAnalyseFolder)  # 删除临时文件夹
     else:
@@ -56,6 +68,18 @@ def AnalyseTsVideoFolder(path: str, fileUID: str):
     merge_video_files(destFolder, videoFilePath, 'ts')
     FileManager().CreateThumbnail(videoFilePath, f"analysed_{fileUID}", FileType.Video.value)
     return f"analysed_{fileUID}", FileManager().GetFileSize(videoFilePath)
+
+
+def AnalyseImageWithPath(path: str, fileUID: str):
+    from common_service.fileService import FileManager
+    logger.info(f"start analyse image {fileUID}")
+    image = np.array(Image.open(path))
+    analysedImage = AnalyseImage(image)
+    targetPath = os.path.join(SOURCE_PATH, f"analysed_{fileUID}.jpg")
+    Image.fromarray(analysedImage).save(targetPath)
+    FileManager().CreateThumbnail(targetPath, f"analysed_{fileUID}", FileType.Image.value)
+    return f"analysed_{fileUID}", FileManager().GetFileSize(targetPath)
+
 
 def RewriteM3U8(src: str, dest: str):
     with open(src, 'r') as f:

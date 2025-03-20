@@ -96,7 +96,7 @@ def cut_files(srcFilePath: str, destFolderPath: str, filename: str):
         "ffmpeg",
         "-y",
         "-i", srcFilePath,
-        "-c:v", "libx264",
+        "-c:v", "h264_amf",
         "-c:a", "copy",
         "-bsf:v", "h264_mp4toannexb",
         tsPath
@@ -105,7 +105,7 @@ def cut_files(srcFilePath: str, destFolderPath: str, filename: str):
         settings.FFMPEG_PATH,
         "-i", tsPath,
         "-c", "copy", "-map", "0", "-f", "segment", "-segment_list", m3u8Path,
-        "-segment_time", "1", f"{destFolderPath}/{filename}_%04d.ts"
+        "-segment_time", "10", f"{destFolderPath}/{filename}_%04d.ts"
     ]
     print(' '.join(CMD_TRANSFER_2TS))
     print(' '.join(CMD_CUT_TS))

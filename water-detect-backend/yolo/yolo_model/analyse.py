@@ -26,18 +26,21 @@ def GetYOLOOutPutPath(path: str, destFolderName: str, projFolderName: str):
     oriFilename = path.split('\\')[-1].split('.')[0]
     return os.path.join(BASE_TMP, projFolderName, destFolderName, f"{oriFilename}.avi")
 
+
+def to_grayscale(frame):
+    # 计算灰度值
+    gray = np.dot(frame[..., :3], [0.2989, 0.5870, 0.1140])
+    # 复制灰度值到三个通道以保持 RGB 格式
+    gray_frame = np.stack([gray] * 3, axis=-1).astype(np.uint8)
+    return gray_frame
+
+
 def convert_to_black_and_white(input_path, output_path):
     try:
         clip = VideoFileClip(input_path)
-        def to_grayscale(frame):
-            # 计算灰度值
-            gray = np.dot(frame[..., :3], [0.2989, 0.5870, 0.1140])
-            # 复制灰度值到三个通道以保持 RGB 格式
-            gray_frame = np.stack([gray] * 3, axis=-1).astype(np.uint8)
-            return gray_frame
         # 应用灰度转换函数到每一帧
         bw_clip = clip.image_transform(to_grayscale)
-        bw_clip.write_videofile(output_path, codec='libx264')
+        bw_clip.write_videofile(output_path, codec='h264_amf', preset="speed")
         clip.close()
         bw_clip.close()
         print(f"convert success: {output_path}")
@@ -65,5 +68,7 @@ def GetFromModel(path: str, destFolderName: str, projFolderName: str):
     return GetYOLOOutPutPath(path, destFolderName, projFolderName)
 
 def AnalyseImage(image):
+    if USE_MOCK:
+        return to_grayscale(image)
     result = singleYOLO()(image, imgsz=320)
     return result[0].plot()

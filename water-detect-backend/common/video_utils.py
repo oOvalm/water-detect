@@ -21,7 +21,7 @@ def avi_to_ts(input_file, output_file):
     cmd = [
         'ffmpeg',
         '-i', input_file,
-        '-c:v', 'libx264',
+        '-c:v', 'h264_amf',
         '-c:a', 'aac',
         output_file
     ]
@@ -60,7 +60,7 @@ def merge_video_files(input_folder, output_file, src_file_type):
     final_clip = concatenate_videoclips(clips, method="compose")
 
     # 保存合并后的视频
-    final_clip.write_videofile(output_file, codec='libx264', audio_codec='aac')
+    final_clip.write_videofile(output_file, codec='h264_amf', audio_codec='aac')
 
     # 关闭所有视频剪辑对象以释放资源
     for clip in clips:

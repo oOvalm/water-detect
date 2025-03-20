@@ -6,7 +6,7 @@ import pika
 from common.db_model import FileType
 from common.mqModels import AnalyseTask
 from waterDetect import settings
-from yolo.yolo_model.main import AnalyseTsVideoFolder
+from yolo.yolo_model.main import AnalyseTsVideoFolder, AnalyseImage, AnalyseImageWithPath
 
 
 def initYoloConsumer():
@@ -41,15 +41,18 @@ def consumeHandler(ch, method, properties, body):
         mqInfo = AnalyseTask(**bodyDict)
         tsFolder = FileManager().GetTSFolder(mqInfo.fileUID)
         logger.info(f"consumer path: {tsFolder}, mqInfo: {mqInfo}")
-
+        fileInfo = None
         try:
-           FileInfo.objects.get(id=mqInfo.fileID, file_uid=mqInfo.fileUID)
+           fileInfo = FileInfo.objects.get(id=mqInfo.fileID, file_uid=mqInfo.fileUID)
         except FileInfo.DoesNotExist:
             logger.warning(f"file not exist, skip task: {mqInfo.fileID} {mqInfo.fileUID}")
             return
-
+        filePath = FileManager().GetFilePath(fileInfo)
         if mqInfo.fileType == FileType.Video.value:
             analysedUID, size = AnalyseTsVideoFolder(tsFolder, mqInfo.fileUID)
+            FileInfo.objects.createAnalysedFile(mqInfo.fileID, analysedUID, size)
+        elif mqInfo.fileType == FileType.Image.value:
+            analysedUID, size = AnalyseImageWithPath(filePath, mqInfo.fileUID)
             FileInfo.objects.createAnalysedFile(mqInfo.fileID, analysedUID, size)
         else:
             logger.error(f"not support file type {mqInfo.fileType}")

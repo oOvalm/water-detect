@@ -107,7 +107,7 @@
                   @click="cancelNameEdit(index)"
               ></span>
             </div>
-            <span class="op" :style="{width: row.showOp && row.id?'230px':'0px'}">
+            <span class="op" v-if="!row.showEdit" :style="{width: row.showOp && row.id?'230px':'0px'}">
               <template v-if="row.showOp && row.id">
 <!--                <span class="iconfont icon-share1" @click="openIn(row)"-->
                 <!--                >打开</span-->
@@ -140,7 +140,7 @@
         </template>
         <template #moreOp="{index, row}">
           <span v-if="row.file_type !== 1 && !row.is_analysed">
-            <el-button @click="openWithCompare(row)">与分析后对比</el-button>
+            <el-button @click="openWithCompare(row)">进入对比页</el-button>
           </span>
         </template>
       </Table>

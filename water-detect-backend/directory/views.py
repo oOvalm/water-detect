@@ -241,6 +241,18 @@ class ThumbnailView(APIView):
         thumbnail = open(file_path, 'rb')
         return FileResponse(thumbnail, content_type='image/jpeg')
 
+class ImageView(APIView):
+    def get(self, request):
+        fileID = request.GET.get('fileID')
+        if fileID is None:
+            raise ParamError("Missing fileID parameter")
+        file = FileInfo.objects.get(id=fileID)
+        file_path = FileManager().GetFilePath(file)
+        if not os.path.exists(file_path):
+            raise InternalServerError
+        thumbnail = open(file_path, 'rb')
+        return FileResponse(thumbnail, content_type='image/jpeg')
+
 
 
 class GetFileView(APIView):
@@ -269,26 +281,28 @@ class GetFileView(APIView):
             print(f'GetFileView error: {e}')
             return Response(INTERNAL_ERROR, status=500)
 
-class DownloadFileView(APIView):
+class GetDownloadFileLinkView(APIView):
     def get(self, request, fileID):
-        if request.path.split('/')[-2] == "createDownload":
-            fileInfo = FileInfo.objects.get(id=fileID)
-            if fileInfo.file_type == FileType.Folder.value:
-                return NewErrorResponse(400, "invalid file id")
-            code = "download_" + uuid.uuid4().__str__()
-            cache.set(code, fileID, constants.HOUR)
-            return NewSuccessResponse({"code": code})
-        elif request.path.split('/')[-2] == "download":
-            fileID = cache.get(fileID)
-            if fileID is None:
-                return NewErrorResponse(400, "invalid code")
-            fileInfo = FileInfo.objects.get(id=fileID)
-            path = FileManager().GetFilePath(fileInfo.file_uid, fileInfo.file_type)
-            file = open(path, 'rb')
-            response = StreamingHttpResponse(file)
-            response['Content-Type'] = 'application/octet-stream'
-            response['Content-Disposition'] = f'attachment; filename={fileInfo.filename}'
-            return response
+        fileInfo = FileInfo.objects.get(id=fileID)
+        if fileInfo.file_type == FileType.Folder.value:
+            return NewErrorResponse(400, "invalid file id")
+        # code = "download_" + uuid.uuid4().__str__()
+        code = fileInfo.file_uid
+        cache.set(code, fileID, constants.HOUR)
+        return NewSuccessResponse({"code": code})
+
+class DownloadFileView(APIView):
+    def get(self, request, fileCode):
+        fileID = cache.get(fileCode)
+        if fileID is None:
+            return NewErrorResponse(400, "invalid code")
+        fileInfo = FileInfo.objects.get(id=fileID)
+        path = FileManager().GetFilePath(fileInfo)
+        file = open(path, 'rb')
+        response = StreamingHttpResponse(file)
+        response['Content-Type'] = 'application/octet-stream'
+        response['Content-Disposition'] = f'attachment; filename={fileInfo.filename}'
+        return response
 
 
 class FileInfoView(APIView):

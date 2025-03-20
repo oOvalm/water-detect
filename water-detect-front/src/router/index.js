@@ -34,6 +34,10 @@ const router = createRouter({
                     path: 'test',
                     name: "测试页面",
                     component: () => import('@/views/models/TestPage.vue')
+                }, {
+                    path: 'profile',
+                    name: "个人中心",
+                    component: () => import('@/views/models/Profile.vue')
                 }
             ]
         },

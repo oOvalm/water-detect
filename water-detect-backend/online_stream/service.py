@@ -83,7 +83,7 @@ def capture_streamNanalyse(app, stream_key, event, que):
                 settings.FFMPEG_PATH,
                 '-i', rtmp_url,
                 '-rw_timeout', '5000000',
-                '-c:v', 'libx264',
+                '-c:v', 'h264_amf',
                 '-c:a', 'aac',
                 '-b:v', '500k',  # 设置视频比特率
                 '-f', 'hls',

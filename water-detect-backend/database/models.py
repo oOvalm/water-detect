@@ -43,6 +43,7 @@ class User(AbstractBaseUser):
     username = models.CharField(max_length=100,null=False)
     sex = models.SmallIntegerField(null=True)
     status = models.SmallIntegerField(default=1,null=False)
+    avatar = models.CharField(max_length=1024,null=True)
     create_time = models.DateTimeField(auto_now_add=True,null=False)
     update_time = models.DateTimeField(auto_now=True,null=False)
 
@@ -79,6 +80,7 @@ class FileInfoManager(models.Manager):
         return fileinfo
     def createAnalysedFile(self, oriFileID, analysedUID, fileSize=0):
         oriFile = super().get(id=oriFileID)
+        newFilename = oriFile.filename.rsplit('.', 1)[0] + '.jpg'
         analysedFileInfo = FileInfo(
             file_status=0,
             file_pid=oriFile.file_pid,
@@ -86,7 +88,7 @@ class FileInfoManager(models.Manager):
             is_analysed=True,
             size = fileSize,
             file_type = oriFile.file_type,
-            filename = f"analysed_{oriFile.filename}",
+            filename = f"analysed_{newFilename}",
             file_uid = analysedUID,
             extra = json.dumps(FileExtra(analyseType=AnalyseFileType.Analysed.value, oppositeID=oriFileID).__json__()).encode('utf-8'),
         )

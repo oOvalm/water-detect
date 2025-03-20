@@ -18,6 +18,7 @@
         <router-view v-slot="{ Component }">
           <component
               @addFile="addFile"
+              @updateProfile="updateProfile"
               ref="routerViewRef"
               :is="Component"
           />
@@ -46,6 +47,9 @@ const homeHeader = ref()
 const addFile = ({file, filePid}) => {
   showUploader.value = true
   homeHeader.value.addFile(file, filePid);
+}
+const updateProfile = () => {
+  homeHeader.value.updateProfile();
 }
 
 </script>

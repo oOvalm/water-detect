@@ -258,7 +258,7 @@ const getEmailCode = () => {
     }
     httpRequest.post('/account/captcha', {
       email: formData.value.email,
-      type: 'register',
+      type: opType.value === 0 ? 'register' : 'reset_password',
     }).then(({data}) => {
       if (data.code !== 0) {
         ElMessage.error(data.msg);

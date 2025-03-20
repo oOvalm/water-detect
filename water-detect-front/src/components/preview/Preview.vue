@@ -55,11 +55,7 @@ const router = useRouter();
 const route = useRoute();
 const fileTypes = getCurrentInstance().appContext.config.globalProperties.$FileType
 
-const imageUrl = computed(() => {
-  return (
-      proxy.globalInfo.imageUrl + fileInfo.value.fileCover.replaceAll("_.", ".")
-  );
-});
+const imageUrl = ref('');
 
 const windowShow = ref(false);
 const closeWindow = () => {
@@ -97,6 +93,7 @@ const showPreview = (data, showPart) => {
   fileInfo.value = data;
   if (data.file_type === fileTypes.Image) {
     nextTick(() => {
+      imageUrl.value = `/api/directory/image?fileID=${data.id}`;
       imageViewerRef.value.show(0);
     });
   } else {

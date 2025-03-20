@@ -1,8 +1,7 @@
 from django import forms
 
-from common_service.redisService import GetDefaultRedis
 from database.models import User
-from common_service import utils
+from common_service import utils, redisService
 
 
 class RegisterForm(forms.Form):
@@ -21,7 +20,7 @@ class RegisterForm(forms.Form):
         if password != confirmPassword:
             self.add_error('confirmPassword', '密码不一致')
             return
-        redisCaptcha = GetDefaultRedis().GetEmailCaptcha(email)
+        redisCaptcha = redisService.GetEmailCaptcha(email)
         if not redisCaptcha or redisCaptcha != emailCaptcha:
             self.add_error('emailCaptcha', '验证码错误')
             return
@@ -36,6 +35,7 @@ class RegisterForm(forms.Form):
         user.password = self.cleaned_data.get('password')
         return user
 
+
 class LoginForm(forms.Form):
     email = forms.EmailField(required=True)
     password = forms.CharField(required=True)
@@ -49,3 +49,26 @@ class LoginForm(forms.Form):
         if not utils.jarge_captcha(captcha, captchaHashCode):
             self.add_error('captcha', '图片验证码错误')
             return
+
+class ResetPasswordForm(forms.Form):
+    email = forms.EmailField(required=True)
+    emailCaptcha = forms.CharField(required=True)
+    password = forms.CharField(required=True)
+    confirmPassword = forms.CharField(required=True)
+    captcha = forms.CharField(required=True)
+    captchaHashCode = forms.CharField(required=True)
+    def clean(self):
+        cleanedData = super().clean()
+        email, password, confirmPassword = cleanedData.get('email'), cleanedData.get('password'), cleanedData.get('confirmPassword')
+        emailCaptcha, captcha, captchaHashCode = cleanedData.get('emailCaptcha'), cleanedData.get('captcha'), cleanedData.get('captchaHashCode')
+        if password!= confirmPassword:
+            self.add_error('confirmPassword', '密码不一致')
+            return
+        redisCaptcha = redisService.GetEmailCaptcha(email)
+        if not redisCaptcha or redisCaptcha != emailCaptcha:
+            self.add_error('emailCaptcha', '验证码错误')
+            return
+        if not utils.jarge_captcha(captcha, captchaHashCode):
+            self.add_error('captcha', '图片验证码错误')
+            return
+

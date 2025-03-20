@@ -28,13 +28,15 @@
       </el-popover>
       <el-dropdown>
         <span class="el-dropdown-link">
-          <img src="@/assets/qq.png" alt="Avatar" class="avatar"/>
-          {{ username }}
+          <img :src="`/api/${userInfo.avatar}`" v-if="userInfo.avatar && userInfo.avatar.length > 0" alt="Avatar"
+               class="avatar"/>
+          <el-avatar v-else :size="80" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"/>
+          {{ userInfo.username }}
           <el-icon class="el-icon--right"><arrow-down/></el-icon>
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item :icon="Avatar">个人中心</el-dropdown-item>
+            <el-dropdown-item :icon="Avatar" @click="gotoProfile">个人中心</el-dropdown-item>
             <el-dropdown-item :icon="InfoFilled">关于</el-dropdown-item>
             <el-dropdown-item :icon="SwitchButton" @click="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
@@ -62,28 +64,38 @@ const props = defineProps({
 const uploadCallbackHandler = (data) => {
   emit("uploadCallback", data);
 }
+const userInfo = ref({
+  username: '',
+  avatar: '',
+});
 const uploaderRef = ref();
 const addFile = (file, filePid) => {
   uploaderRef.value.addFile(file, filePid);
 };
-defineExpose({addFile});
-
-const username = ref()
-const logout = () => {
-  localStorage.removeItem("jwt");
-  router.push("/login");
+const gotoProfile = () => {
+  router.push('/profile')
 }
-onMounted(() => {
+const updateProfile = () => {
   httpRequest.get("account/selfInfo").then(({data}) => {
     if (data.code == null || data.code !== 0) {
       logout()
     } else {
-      username.value = data.data.username
+      userInfo.value = data.data;
     }
   }).catch((e) => {
     console.log(e);
     logout();
   })
+}
+defineExpose({addFile, updateProfile});
+
+const logout = () => {
+  localStorage.removeItem("jwt");
+  router.push("/login");
+}
+
+onMounted(() => {
+  updateProfile()
 })
 </script>
 

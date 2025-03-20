@@ -7,8 +7,9 @@
         }}
       </el-button>
       <!--      <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>-->
-      <el-button class="btn" type="primary" @click="switchSync">{{ isSyncVideo ? "取消同步" : "开启同步" }}</el-button>
-      <el-progress type="dashboard" :percentage="analyseProgress" v-if="fileInfo.id">
+      <el-checkbox class="btn" v-model="isSyncVideo" label="是否同步两侧视频" @click="switchSync"/>
+      <el-progress type="dashboard" :percentage="analyseProgress" v-if="fileInfo.id"
+                   :status="analyseProgress >= 100?'success':''">
         <template #default="{ percentage }">
           <span class="percentage-value">{{ percentage }}%</span>
           <span class="percentage-label">分析进度</span>
@@ -16,7 +17,7 @@
       </el-progress>
     </div>
   </div>
-  <div class="video-container" v-if="fileInfo.id || isStreaming">
+  <div class="video-container" v-if="(fileInfo.id && fileInfo.file_type === fileTypes.Video) || isStreaming">
     <DoubleVideo
         style="width: 100%"
         :originUrl="originUrl"
@@ -26,6 +27,10 @@
         :show-analysed="isShowAnalysedVideo()"
         :is-sync="isSyncVideo"
     ></DoubleVideo>
+  </div>
+  <div class="video-container" v-else-if="fileInfo.file_type === fileTypes.Image">
+    <!--    <el-image :src="``"></el-image>-->
+    <DoubleImage :originUrl="originUrl" :analysedUrl="analysedUrl"></DoubleImage>
   </div>
   <div v-else>
     <el-upload
@@ -51,7 +56,7 @@
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted, watch, nextTick} from 'vue';
+import {ref, onMounted, onUnmounted, watch, nextTick, getCurrentInstance} from 'vue';
 import message from "@/utils/Message.js";
 import httpRequest from "@/api/httpRequest.ts";
 import {Loading, UploadFilled, WarningFilled} from "@element-plus/icons-vue";
@@ -60,10 +65,14 @@ import PreviewVideo from "@/components/preview/PreviewVideo.vue";
 import {useRoute} from "vue-router";
 import DoubleVideo from "@/components/DoubleVideo.vue";
 import Dialog from "@/components/Dialog.vue";
-import {ElInput, ElMessageBox} from "element-plus";
+import {ElButton, ElInput, ElMessageBox} from "element-plus";
 import {RTMP_HOST} from "@/constants";
 import DPlayer from "dplayer";
 import Hls from "hls.js";
+import DoubleImage from "@/components/DoubleImage.vue";
+
+const fileTypes = getCurrentInstance().appContext.config.globalProperties.$FileType
+
 
 const emit = defineEmits(["addFile"]);
 const fileInfo = ref({}); // 原始文件信息
@@ -101,7 +110,6 @@ const uploadRTSPStream = () => {
 };
 
 const switchSync = async () => {
-  isSyncVideo.value = !isSyncVideo.value;
   localStorage.setItem("isSyncVideo", isSyncVideo.value);
 }
 
@@ -154,12 +162,20 @@ const uploadDone = ({fileUID, ty, fileID}) => {
     if (data.code == null || data.code !== 0) {
       throw new Error(data.msg);
     }
-    fileInfo.value = data.data;
-    fetchProcess()
-    console.log(originUrl.value)
-    timer = setInterval(() => {
+    console.log(data.data.file_type, fileTypes.Image)
+    if (data.data.file_type === fileTypes.Video) {
+      fileInfo.value = data.data;
       fetchProcess()
-    }, 5000)
+      console.log(originUrl.value)
+      timer = setInterval(() => {
+        fetchProcess()
+      }, 5000)
+    } else if (data.data.file_type === fileTypes.Image) {
+      console.log("xxx")
+      originUrl.value = `/api/directory/image?fileID=${data.data.id}`
+      analysedUrl.value = `/api/directory/image?fileID=${data.data.id}`
+      fileInfo.value = data.data;
+    }
   }).catch((e) => {
     console.log(e)
   })
@@ -213,7 +229,7 @@ onUnmounted(() => {
 
 .video-container {
   display: flex;
-  height: 300px;
+  height: 700px;
 }
 
 .double-video-player .video-container:nth-child(1) {

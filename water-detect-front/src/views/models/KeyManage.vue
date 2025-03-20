@@ -1,7 +1,29 @@
 <template>
   <div>
-    <el-button type="primary" @click="openCreateDialog">新增</el-button>
-    <el-button type="danger" @click="batchDelete">批量删除</el-button>
+    <el-row :gutter="10">
+      <el-col :span="20">
+        <el-button type="primary" @click="openCreateDialog">新增</el-button>
+        <el-button type="danger" @click="batchDelete">批量删除</el-button>
+      </el-col>
+      <el-col :span="3">
+        <el-popover
+            placement="top"
+            title="提示信息"
+            trigger="hover"
+        >
+          <template #reference>
+            <el-icon>
+              <QuestionFilled/>
+            </el-icon>
+          </template>
+          <template #content>
+            todo
+          </template>
+        </el-popover>
+        如何使用推流？
+      </el-col>
+    </el-row>
+
     <el-table
         ref="tableRef"
         :data="currentTableData"
@@ -87,6 +109,7 @@
 import {ref, reactive, onMounted} from 'vue';
 import {ElTable, ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElPagination, ElMessageBox} from 'element-plus';
 import httpRequest from "@/api/httpRequest.ts";
+import {QuestionFilled} from '@element-plus/icons-vue'
 
 // 当前显示的表格数据
 const currentTableData = ref([]);

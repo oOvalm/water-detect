@@ -3,13 +3,16 @@ import string
 import random
 
 from django.core.mail import send_mail
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from captcha.models import CaptchaStore
 from captcha.helpers import captcha_image_url
-from rest_framework import permissions
+from rest_framework import permissions, status
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from account.forms import RegisterForm, LoginForm
+from account.forms import RegisterForm, LoginForm, ResetPasswordForm
+from common_service.fileService import FileManager
+from common_service.redisService import GetDefaultRedis
 from database.models import User
 from common import constants
 from common_service import redisService
@@ -62,7 +65,7 @@ class GenerateCaptchaView(APIView):
             recipient_list = [email]
             # 发送邮件
             print(f"send email to {email}, {verification_code}")
-            redis.SetEmailCaptcha(email, verification_code)
+            redisService.SetEmailCaptcha(email, verification_code)
             if not DEBUG:
                 send_mail(subject, message, from_email, recipient_list)
             return NewSuccessResponse()
@@ -75,6 +78,8 @@ class GenerateCaptchaView(APIView):
                 return False, "该邮箱已注册"
             else:
                 return True, ""
+        elif type == 'reset_password':
+            return True, ""
         else:
             return False, constants.INTERNAL_ERROR
 
@@ -130,12 +135,63 @@ class RegisterView(APIView):
             return NewSuccessResponse({"id": newUser.id, "email": newUser.email})
 
 
+class ResetPasswordView(APIView):
+    def post(self, request):
+        jsonDict = json.loads(request.body)
+        result = ResetPasswordForm(jsonDict)
+        if not result.is_valid():
+            err = result.errors
+            if 'captchaHashCode' in err:
+                del err['captchaHashCode']
+            if len(err) == 0:
+                return NewErrorResponse(500, constants.INTERNAL_ERROR)
+            else:
+                key = list(err.keys())[0]
+                return NewErrorResponse(400, f'{str(key)}: {err[key][0]}')
+        email = result.cleaned_data.get('email')
+        user = User.objects.filter(email=email).first()
+        if user is None:
+            return NewErrorResponse(442, "邮箱未注册")
+        user.password = getPasswordHash(result.cleaned_data.get('password'))
+        user.save()
+        return NewSuccessResponse({"id": user.id, "email": user.email})
+
+
 class GetSelfInfoView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
         return NewSuccessResponse({
+            "id": request.user.id,
+            "avatar": request.user.avatar,
             "username": request.user.username,
             "email": request.user.email,
-            "password": request.user.password,
+            "sex": request.user.sex,
             "loi": request.user.last_login,
         })
+
+class AvatarUploadView(APIView):
+    def post(self, request, *args, **kwargs):
+        if 'file' not in request.FILES:
+            return Response({'msg': '未上传文件'}, status=status.HTTP_400_BAD_REQUEST)
+
+        file = request.FILES['file']
+        file_url = FileManager().saveAvatar(file)
+        return Response({'msg': '上传成功', 'url': f"account/{file_url}"}, status=status.HTTP_200_OK)
+
+
+class ProfileUpdateView(APIView):
+    def post(self, request, userID, *args, **kwargs):
+        try:
+            user = User.objects.get(id=userID)
+        except User.DoesNotExist:
+            return NewErrorResponse(404, '用户不存在')
+
+        data = request.data
+        user.username = data.get('username', user.username)
+        user.email = data.get('email', user.email)
+        user.password = getPasswordHash(data.get('password', user.password))
+        user.sex = data.get('sex', user.sex)
+        user.avatar = data.get('avatar', user.avatar)
+        user.save()
+
+        return NewSuccessResponse({'msg': '个人信息保存成功'})
