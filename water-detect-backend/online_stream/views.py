@@ -96,12 +96,9 @@ def start_resolve_stream(stream_name: str):
 @api_view(['GET'])
 def rtmpPublish(request):
     print(request.GET)
-    username = request.GET.get('username')
-    password = request.GET.get('password')
     app = request.GET.get('app')
     call = request.GET.get('call')
     stream_name = request.GET.get('name')
-    # todo: 鉴权
 
     if RedisLock.is_locked(GetDefaultRedis(), f"capture_ori_stream:{app}_{stream_name}"):
         return HttpResponse('stream has been started', status=403)
@@ -123,8 +120,20 @@ def rtmpPublishDone(request):
 
 @csrf_exempt
 @api_view(['GET'])
-def stream_proxy(request, app, stream_key):
+def stream_proxy(request, app, stream_id):
     try:
+        streamKeyInfo = StreamKeyInfo.objects.filter(pk=stream_id).first()
+        if streamKeyInfo is None:
+            return HttpResponse('stream not found', status=404)
+        if streamKeyInfo.auth_type == 1:
+            pass
+        elif streamKeyInfo.auth_type == 2:
+            if request.user.email not in streamKeyInfo.getAuthUserEmails() and request.user.id != streamKeyInfo.user_id:
+                return HttpResponse('no auth', status=404)
+        elif streamKeyInfo.auth_type == 3:
+            if request.user.id != streamKeyInfo.user_id:
+                return HttpResponse('no auth', status=404)
+        stream_key = streamKeyInfo.stream_key
         if not RedisLock.is_locked(GetDefaultRedis(), f"capture_ori_stream:{app}_{stream_key}"):
             return HttpResponse('stream not start', status=404)
         isAnalyse = request.GET.get('analyse')

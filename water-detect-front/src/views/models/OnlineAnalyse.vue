@@ -1,7 +1,7 @@
 <template>
   <div class="top">
     <div class="top-op">
-      <el-input class="stream-key-input" v-model="streamKey" placeholder="请输入 streamkey"/>
+      <el-input class="stream-key-input" v-model="streamKey" placeholder="请输入 串流id"/>
       <el-button class="btn" type="primary" @click="uploadRTSPStream"> {{
           isStreaming ? '重新加载流' : '播放流'
         }}
@@ -97,6 +97,7 @@ const isStreaming = ref(false);
 const showStreamAnalysed = ref(false);
 const uploadRTSPStream = () => {
   httpRequest.get(`/stream/proxy/live/${streamKey.value}`).then(({data}) => {
+    console.log(data)
     originUrl.value = `/stream/${data}`;
     isStreaming.value = true;
     httpRequest.get(`/stream/proxy/live/${streamKey.value}?analyse=true`).then(({data}) => {
@@ -104,8 +105,8 @@ const uploadRTSPStream = () => {
       showStreamAnalysed.value = true;
     })
   }).catch((e) => {
-    message.error("获取直播连接失败")
     console.log(e)
+    message.error(`获取直播连接失败: ${e.response.data}`)
   })
 };
 

@@ -211,9 +211,9 @@ class StreamKeyInfo(models.Model):
     class Meta:
         db_table = 'water_detect_stream_info'
 
-    def getAuthUserIDs(self):
+    def getAuthUserEmails(self):
         if self.auth_user_emails is None:
             return []
         return self.auth_user_emails.split(',')
-    def setAuthUserIDs(self, auth_user_emails):
+    def setAuthUserEmails(self, auth_user_emails):
         self.auth_user_emails = ','.join(auth_user_emails)

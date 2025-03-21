@@ -21,6 +21,7 @@
           <div>推流服务器 ip 地址为 <code>8.148.229.47</code>，rtmp 端口为 <code>1935</code></div>
           <div>推流链接为 <code>rtmp://8.148.229.47:1935/live/${唯一标识符}</code></div>
           <div>如果你使用 obs 进行推流，服务器地址为 <code>rtmp://8.148.229.47:1935/live</code>，串流密钥为唯一标识符
+            <div><b>唯一标识符同时也是密钥，请不要外泄。接收流使用串流id</b></div>
           </div>
         </el-popover>
         如何使用推流？
@@ -35,10 +36,16 @@
         @selection-change="handleSelectionChange"
     >
       <el-table-column type="selection" width="55"></el-table-column>
+      <el-table-column prop="id" label="串流id"></el-table-column>
       <el-table-column prop="stream_name" label="流名称"></el-table-column>
       <el-table-column prop="stream_key" label="流唯一标识"></el-table-column>
       <el-table-column prop="stream_description" label="流描述"></el-table-column>
-      <el-table-column prop="auth_type" label="授权类型" :width="100"></el-table-column>
+      <el-table-column label="授权类型" width="100">
+        <template #default="scope">
+          <!-- 根据 auth_type 的值展示对应的文字 -->
+          {{ getAuthTypeText(scope.row.auth_type) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="create_time" label="创建时间"></el-table-column>
       <el-table-column label="操作" width="200">
         <template #default="scope">
@@ -323,6 +330,20 @@ const batchDelete = async () => {
     await fetchData();
   } catch (error) {
     console.error('批量删除数据失败:', error);
+  }
+};
+
+// 根据 auth_type 的值返回对应的文字
+const getAuthTypeText = (authType) => {
+  switch (authType) {
+    case 1:
+      return '所有人';
+    case 2:
+      return '指定范围';
+    case 3:
+      return '仅自己';
+    default:
+      return '仅自己';
   }
 };
 

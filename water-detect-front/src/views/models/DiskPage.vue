@@ -109,9 +109,7 @@
             </div>
             <span class="op" v-if="!row.showEdit" :style="{width: row.showOp && row.id?'230px':'0px'}">
               <template v-if="row.showOp && row.id">
-<!--                <span class="iconfont icon-share1" @click="openIn(row)"-->
-                <!--                >打开</span-->
-                <!--                >-->
+                <span class="iconfont icon-share1" @click="share(row)">分享</span>
                 <span
                     class="iconfont icon-download"
                     @click="download(row)"
@@ -150,6 +148,7 @@
         @folderSelect="moveFolderDone"
     ></FolderSelect>
     <Preview ref="previewRef"></Preview>
+    <FileShare ref="shareRef"></FileShare>
   </div>
 </template>
 
@@ -184,6 +183,10 @@ defineExpose({
   uploadDone,
 });
 
+const shareRef = ref();
+const share = (row) => {
+  shareRef.value.show(row);
+};
 const currentFolder = ref({fileID: -1})
 const tableData = ref({})
 const filenameSearchText = ref();
