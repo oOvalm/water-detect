@@ -38,6 +38,7 @@
       <el-table-column prop="stream_name" label="流名称"></el-table-column>
       <el-table-column prop="stream_key" label="流唯一标识"></el-table-column>
       <el-table-column prop="stream_description" label="流描述"></el-table-column>
+      <el-table-column prop="auth_type" label="授权类型" :width="100"></el-table-column>
       <el-table-column prop="create_time" label="创建时间"></el-table-column>
       <el-table-column label="操作" width="200">
         <template #default="scope">
@@ -59,12 +60,33 @@
         @current-change="handlePageNoChange"
     ></el-pagination>
     <el-dialog v-model="createDialogVisible" title="新建数据">
-      <el-form :model="formData" label-width="80px">
+      <el-form :model="formData" label-width="100px">
         <el-form-item label="流名称">
           <el-input v-model="formData.stream_name"></el-input>
         </el-form-item>
         <el-form-item label="流描述">
           <el-input v-model="formData.stream_description"></el-input>
+        </el-form-item>
+        <el-form-item label="观看授权范围">
+          <el-radio-group v-model="formData.auth_type">
+            <el-radio :label="1">所有人</el-radio>
+            <el-radio :label="2">指定范围</el-radio>
+            <el-radio :label="3">仅自己</el-radio>
+          </el-radio-group>
+
+        </el-form-item>
+        <el-form-item label="">
+          <el-select
+              v-if="formData.auth_type === 2"
+              v-model="formData.auth_user_emails"
+              multiple
+              filterable
+              default-first-option
+              :reserve-keyword="false"
+              allow-create
+              placeholder="请选择授权的用户邮箱"
+          >
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -98,17 +120,17 @@
           <el-input v-model="detailFormData.create_time" readonly></el-input>
         </el-form-item>
         <el-form-item label="观看授权范围">
-          <el-radio-group v-model="detailFormData.authType">
-            <el-radio :label="3">所有人</el-radio>
+          <el-radio-group v-model="detailFormData.auth_type">
+            <el-radio :label="1">所有人</el-radio>
             <el-radio :label="2">指定范围</el-radio>
-            <el-radio :label="1">仅自己</el-radio>
+            <el-radio :label="3">仅自己</el-radio>
           </el-radio-group>
 
         </el-form-item>
         <el-form-item label="">
           <el-select
-              v-if="detailFormData.authType === 2"
-              v-model="detailFormData.authUsers"
+              v-if="detailFormData.auth_type === 2"
+              v-model="detailFormData.auth_user_emails"
               multiple
               filterable
               default-first-option
@@ -176,6 +198,8 @@ const detailFormData = reactive({
   stream_key: '',
   stream_description: '',
   create_time: '',
+  auth_type: 0,
+  auth_user_emails: [],
   id: null
 });
 
@@ -216,15 +240,21 @@ const openCreateDialog = () => {
   createDialogVisible.value = true;
   formData.stream_name = '';
   formData.stream_description = '';
+  formData.auth_type = 3;
 };
 
 // 新建数据
 const createData = async () => {
   try {
-    const response = await httpRequest.post("/stream/streamkeyinfo/", {
+    let data = {
       stream_name: formData.stream_name,
       stream_description: formData.stream_description,
-    });
+      auth_type: formData.auth_type,
+    }
+    if (formData.auth_user_emails) {
+      data['auth_user_emails'] = formData.auth_user_emails.join(',')
+    }
+    const response = await httpRequest.post("/stream/streamkeyinfo/", data);
     ElMessageBox.confirm(`创建成功, 你的流key为: ${response.data.stream_key}`);
     createDialogVisible.value = false;
     await fetchData();
@@ -256,17 +286,27 @@ const openDetailDialog = (row) => {
   detailFormData.stream_key = row.stream_key;
   detailFormData.stream_description = row.stream_description;
   detailFormData.create_time = row.create_time;
+  detailFormData.auth_type = row.auth_type;
   detailFormData.id = row.id;
+  detailFormData.auth_user_emails = []
+  if (row.auth_user_emails) {
+    detailFormData.auth_user_emails = row.auth_user_emails.split(',');
+  }
   detailDialogVisible.value = true;
 };
 
 // 保存详情更改
 const saveDetailChanges = async () => {
   try {
-    await httpRequest.put(`/stream/streamkeyinfo/${detailFormData.id}/`, {
+    let data = {
       stream_name: detailFormData.stream_name,
-      stream_description: detailFormData.stream_description
-    });
+      stream_description: detailFormData.stream_description,
+      auth_type: detailFormData.auth_type,
+    }
+    if (detailFormData.auth_user_emails && detailFormData.auth_type === 2) {
+      data['auth_user_emails'] = detailFormData.auth_user_emails.join(',')
+    }
+    await httpRequest.put(`/stream/streamkeyinfo/${detailFormData.id}/`, data);
     detailDialogVisible.value = false;
     await fetchData();
   } catch (error) {

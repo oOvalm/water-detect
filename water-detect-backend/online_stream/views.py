@@ -137,11 +137,11 @@ def stream_proxy(request, app, stream_key):
         return HttpResponse(f"Error: {str(e)}", status=500)
 
 
-
 class CustomPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
 
 class StreamKeyInfoViewSet(viewsets.ModelViewSet):
     queryset = StreamKeyInfo.objects.all()
@@ -152,14 +152,12 @@ class StreamKeyInfoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # 只返回 user_id 等于当前请求用户 id 的记录
         return self.queryset.filter(user_id=self.request.user.id)
 
     def perform_create(self, serializer):
-        # 生成一个随机的 UUID 并转换为字符串
         stream_key = base64.b64encode(str(uuid.uuid4()).encode('utf-8')[:9]).decode('utf-8').replace('=', '')
         serializer.save(user_id=self.request.user.id, stream_key=stream_key)
 
     def perform_update(self, serializer):
-        # 更新时只传入 stream_name 和 stream_description
         serializer.save()
+

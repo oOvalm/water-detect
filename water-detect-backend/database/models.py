@@ -200,20 +200,20 @@ class FileInfo(models.Model):
 
 
 class StreamKeyInfo(models.Model):
-    stream_name = models.CharField(max_length=4096, db_comment='流名称')
+    stream_name = models.CharField(max_length=1024, db_comment='流名称')
     stream_description = models.CharField(null=True, max_length=4096, db_comment='流描述')
-    stream_key = models.CharField(null=True, max_length=4096, db_comment='流唯一标识')
+    stream_key = models.CharField(null=True, max_length=1024, db_comment='流唯一标识')
     user_id = models.IntegerField(db_comment='userID')
-    create_time = models.DateTimeField(auto_now_add=True,null=False)
-    update_time = models.DateTimeField(auto_now=True,null=False)
-    authType = models.SmallIntegerField(default=0, null=False, db_comment='1:公开 2:指定范围 3:仅自己')
-    authUserIDs = models.CharField(max_length=4096, null=True, db_comment='允许获取流的ID列表')
+    create_time = models.DateTimeField(auto_now_add=True, null=False)
+    update_time = models.DateTimeField(auto_now=True, null=False)
+    auth_type = models.SmallIntegerField(default=0, null=False, db_comment='1:公开 2:指定范围 3:仅自己')
+    auth_user_emails = models.CharField(max_length=4096, null=True, db_comment='允许获取流的ID列表')
     class Meta:
         db_table = 'water_detect_stream_info'
 
     def getAuthUserIDs(self):
-        if self.authUserIDs is None:
+        if self.auth_user_emails is None:
             return []
-        return [int(id) for id in self.authUserIDs.split(',')]
-    def setAuthUserIDs(self, authUserIDs):
-        self.authUserIDs = ','.join([str(id) for id in authUserIDs])
+        return self.auth_user_emails.split(',')
+    def setAuthUserIDs(self, auth_user_emails):
+        self.auth_user_emails = ','.join(auth_user_emails)
