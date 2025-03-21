@@ -108,6 +108,7 @@ class LoginView(APIView):
         return NewSuccessResponse({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
+            'user_id': user.id,
         })
 
 

@@ -38,6 +38,10 @@ const router = createRouter({
                     path: 'profile',
                     name: "个人中心",
                     component: () => import('@/views/models/Profile.vue')
+                }, {
+                    path: 'share',
+                    name: "我的分享",
+                    component: () => import('@/views/models/ShareManage.vue')
                 }
             ]
         },
@@ -50,6 +54,15 @@ const router = createRouter({
             path: '/test',
             name: 'test',
             component: () => import('@/views/models/OnlineAnalyse.vue')
+        }, {
+            path: '/shareCheck/:shareId',
+            name: '分享校验',
+            component: () => import("@/views/share/ShareCheck.vue")
+        },
+        {
+            path: '/share/:shareId',
+            name: '分享',
+            component: () => import("@/views/share/WebShare.vue")
         }/*
     {
       path: "/",
@@ -75,7 +88,7 @@ const router = createRouter({
             needLogin: true,
             menuCode: "share"
           },
-          component: () => import("@/views/share/Share.vue")
+          component: () => import("@/views/share/WebShare.vue")
         },
         {
           path: '/recycle',
@@ -115,16 +128,7 @@ const router = createRouter({
         },
       ]
     },
-    {
-      path: '/shareCheck/:shareId',
-      name: '分享校验',
-      component: () => import("@/views/webshare/ShareCheck.vue")
-    },
-    {
-      path: '/share/:shareId',
-      name: '分享',
-      component: () => import("@/views/webshare/Share.vue")
-    }, {
+    , {
       path: '/qqlogincalback',
       name: "qq登录回调",
       component: () => import('@/views/QqLoginCallback.vue'),

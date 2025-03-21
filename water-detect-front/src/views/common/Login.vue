@@ -355,6 +355,7 @@ const doSubmit = () => {
         ElMessage.success("登录成功");
         //存储cookie
         localStorage.setItem("jwt", `Bearer ${data.data.access}`);
+        localStorage.setItem("userID", `${data.data.user_id}`);
         router.push("/");
       } else if (opType.value == 2) {
         //重置密码

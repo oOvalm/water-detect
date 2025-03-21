@@ -29,7 +29,7 @@
 <script setup>
 import {onBeforeMount, onMounted, ref} from 'vue';
 import router from "@/router/index.js";
-import {House, ArrowLeft, ArrowRight, Files, Key, VideoCamera, Avatar} from "@element-plus/icons-vue";
+import {Share, House, ArrowLeft, ArrowRight, Files, Key, VideoCamera, Avatar} from "@element-plus/icons-vue";
 import {useRoute} from "vue-router";
 
 // 定义菜单数据
@@ -70,6 +70,12 @@ const menus = ref([
     title: '个人中心',
     icon: Avatar,
     path: 'profile'
+  },
+  {
+    index: 6,
+    title: '我的分享',
+    icon: Share,
+    path: 'share'
   }
 ]);
 

@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'common_service',
     'account',
     'directory',
+    'share_file',
     'self_test',
     'yolo',
     'online_stream',

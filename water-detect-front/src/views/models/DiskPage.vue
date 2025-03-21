@@ -154,6 +154,7 @@
 
 <script setup>
 
+import FileShare from "@/views/share/ShareFile.vue";
 import {nextTick, onMounted, ref} from "vue";
 import httpRequest from "@/api/httpRequest.ts";
 import message from "@/utils/Message.js";
