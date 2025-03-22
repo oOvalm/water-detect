@@ -51,7 +51,7 @@ const props = defineProps({
 
 const api = {
   getFolderInfo: "/file/getFolderInfo",
-  getFolderInfo4Share: "/showShare/getFolderInfo",
+  getFolderInfo4Share: "/share/web/getFolderInfo",
   getFolderInfo4Admin: "/admin/getFolderInfo",
 };
 

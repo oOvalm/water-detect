@@ -3,8 +3,10 @@ import subprocess
 import sys
 import time
 
+import requests
 import torch
 
+from yolo.yolo_model.analyse import GetFromRemote
 from yolo.yolo_model.main import AnalyseTsVideoFolder, merge_video_files
 
 
@@ -50,10 +52,25 @@ def check_rtmp_stream(url):
         return False
 
 
+def TestUpload():
+    url = 'http://127.0.0.1:8180/upload'
+    try:
+        with open(file_path, 'rb') as file:
+            files = {'file': file}
+            response = requests.post(url, files=files)
+            if response.status_code == 200:
+                print('File uploaded successfully')
+            else:
+                print(f'Upload failed: {response.text}')
+    except FileNotFoundError:
+        print('File not found')
+
 # 示例用法
 if __name__ == '__main__':
-    rtmp_url = 'rtmp://8.148.229.47:1935/live/ZGVmNjMzY2Et'
-    if check_rtmp_stream(rtmp_url):
-        print("该 RTMP 地址有输入流。")
-    else:
-        print("该 RTMP 地址无输入流。")
+    file_path = r'D:\coding\graduation-design\water-detect\media\files\1e1e8ee3-0c63-44f2-9776-d37bbf7f2d5c.mp4'
+    GetFromRemote(file_path)
+    # rtmp_url = 'rtmp://8.148.229.47:1935/live/ZGVmNjMzY2Et'
+    # if check_rtmp_stream(rtmp_url):
+    #     print("该 RTMP 地址有输入流。")
+    # else:
+    #     print("该 RTMP 地址无输入流。")

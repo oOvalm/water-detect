@@ -2,6 +2,7 @@ import logging
 import os
 
 import numpy as np
+import requests
 from moviepy import VideoFileClip
 from ultralytics import YOLO
 
@@ -72,3 +73,21 @@ def AnalyseImage(image):
         return to_grayscale(image)
     result = singleYOLO()(image, imgsz=320)
     return result[0].plot()
+
+
+
+def GetFromRemote(file_path):
+    url = 'http://127.0.0.1:8180/upload'
+    try:
+        with open(file_path, 'rb') as file:
+            files = {'file': file}
+            response = requests.post(url, files=files)
+            if response.status_code == 200:
+                output_file_path = os.path.join(settings.MEDIA_ROOT, 'output_' + os.path.basename(file_path))
+                with open(output_file_path, 'wb') as output_file:
+                    output_file.write(response.content)
+                print(f'File uploaded and result saved to {output_file_path}')
+            else:
+                print(f'Upload failed: {response.text}')
+    except FileNotFoundError:
+        print('File not found')
