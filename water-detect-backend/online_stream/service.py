@@ -150,18 +150,12 @@ def capture_streamNanalyse(app, stream_key, event, que):
         user = StreamKeyInfo.objects.filter(stream_key=stream_key).first()
         if user:
             userID = user.user_id
-        oriFileInfo = resolve_stream_to_fileinfo(oriPath, oriUID, userID)
-        analysedFileInfo = resolve_stream_to_fileinfo(analysePath, analysedUID, userID)
-        oriExtra = FileExtra(analyseType=AnalyseFileType.Origin.value, oppositeID=analysedFileInfo.id)
-        analysedExtra = FileExtra(analyseType=AnalyseFileType.Analysed.value, oppositeID=oriFileInfo.id)
-        oriFileInfo.extra = json.dumps(oriExtra.__json__()).encode('utf-8')
-        analysedFileInfo.extra = json.dumps(analysedExtra.__json__()).encode('utf-8')
-        oriFileInfo.save()
-        analysedFileInfo.save()
+        oriFileInfo = resolve_ori_stream_to_fileinfo(oriPath, oriUID, userID)
+        resolve_analysed_stream_to_fileinfo(analysePath, analysedUID, oriFileInfo)
     log.info('capture_streamNanalyse return')
 
 
-def resolve_stream_to_fileinfo(streamPath, fileUID, userID):
+def resolve_ori_stream_to_fileinfo(streamPath, fileUID, userID):
     destVideoPath = os.path.join(settings.MEDIA_ROOT, 'files', f'{fileUID}.mp4')
     # 合成mp4
     merge_video_files(streamPath, destVideoPath,'ts')
@@ -173,8 +167,20 @@ def resolve_stream_to_fileinfo(streamPath, fileUID, userID):
         fileUID=fileUID,
         userID=userID,
         fileSize=FileManager().GetFileSize(destVideoPath),
-        isAnalysed=False,
     )
+    FileManager().cutFile4Video(fileInfo)
+    fileInfo.file_status = FileStatus.Done.value
+    fileInfo.save()
+    return fileInfo
+
+def resolve_analysed_stream_to_fileinfo(streamPath, fileUID, oriFileInfo):
+    destVideoPath = os.path.join(settings.MEDIA_ROOT, 'files', f'{fileUID}.mp4')
+    # 合成mp4
+    merge_video_files(streamPath, destVideoPath, 'ts')
+    # 缩略图
+    FileManager().CreateThumbnail(destVideoPath, fileUID, FileType.Video.value)
+    # 写db
+    fileInfo = FileInfo.objects.createAnalysedFile(oriFileInfo.id, fileUID, FileManager().GetFileSize(destVideoPath))
     FileManager().cutFile4Video(fileInfo)
     fileInfo.file_status = FileStatus.Done.value
     fileInfo.save()

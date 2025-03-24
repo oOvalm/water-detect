@@ -10,11 +10,13 @@ from common.annotation import singleton
 from waterDetect import settings
 
 USE_MOCK = True
+USE_REMOTE = False
+
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
 SOURCE_PATH = os.path.join(settings.MEDIA_ROOT, 'files')
 YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\water-detect-backend\yolo\yolo_model\yolov8n.pt'
-# 加载 YOLOv8n 模型
+# 加载 YOLOv11n 模型
 @singleton
 class singleYOLO(YOLO):
     def __init__(self):
@@ -36,6 +38,7 @@ def to_grayscale(frame):
     return gray_frame
 
 
+# 测试阶段，使用灰度图代替YOLO输出
 def convert_to_black_and_white(input_path, output_path):
     try:
         clip = VideoFileClip(input_path)
@@ -60,6 +63,10 @@ def GetFromModel_Mock(path: str, destFolderName: str, projFolderName: str):
 def GetFromModel(path: str, destFolderName: str, projFolderName: str):
     if USE_MOCK:
         return GetFromModel_Mock(path, destFolderName, projFolderName)
+
+    if USE_REMOTE:
+        return GetFromRemote(path, destFolderName, projFolderName)
+
     # 使用模型对视频文件进行预测，并保存结果
     results = singleYOLO().predict(source=path, save=True,
                             project=os.path.join(BASE_TMP, projFolderName),
@@ -76,18 +83,18 @@ def AnalyseImage(image):
 
 
 
-def GetFromRemote(file_path):
-    url = 'http://127.0.0.1:8180/upload'
+def GetFromRemote(file_path, destFolderName, projFolderName):
+    url = settings.REMOTE_DETECT_URL
     try:
         with open(file_path, 'rb') as file:
             files = {'file': file}
             response = requests.post(url, files=files)
             if response.status_code == 200:
-                output_file_path = os.path.join(settings.MEDIA_ROOT, 'output_' + os.path.basename(file_path))
+                output_file_path = GetYOLOOutPutPath(file_path, destFolderName, projFolderName)
                 with open(output_file_path, 'wb') as output_file:
                     output_file.write(response.content)
-                print(f'File uploaded and result saved to {output_file_path}')
+                logger.info(f'File uploaded and result saved to {output_file_path}')
             else:
-                print(f'Upload failed: {response.text}')
+                logger.info(f'Upload failed: {response.text}')
     except FileNotFoundError:
-        print('File not found')
+        logger.error('File not found')

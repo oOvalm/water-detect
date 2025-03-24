@@ -1,5 +1,6 @@
 /water-detect-backend/.venv/
 /water-detect-backend/.idea/
+/yoloDetectProject/.idea/
 /water-detect-backend/media/
 media/
 __pycache__/

@@ -26,14 +26,6 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-
         return self.create_user(email, password, **extra_fields)
 
 class User(AbstractBaseUser):
@@ -74,29 +66,35 @@ class FileInfoManager(models.Manager):
             filename=filename,
             user_id=user.id,
             file_uid = fileID,
-            # thumbnail=// todo
         )
         fileinfo.save()
         return fileinfo
     def createAnalysedFile(self, oriFileID, analysedUID, fileSize=0):
         oriFile = super().get(id=oriFileID)
-        newFilename = oriFile.filename.rsplit('.', 1)[0] + '.jpg'
+        newFilename = oriFile.filename.rsplit('.', 1)[0] + ('.jpg' if oriFile.file_type == FileType.Image.value else '.mp4')
         analysedFileInfo = FileInfo(
             file_status=0,
             file_pid=oriFile.file_pid,
             user_id = oriFile.user_id,
-            is_analysed=True,
             size = fileSize,
             file_type = oriFile.file_type,
             filename = f"analysed_{newFilename}",
             file_uid = analysedUID,
-            extra = json.dumps(FileExtra(analyseType=AnalyseFileType.Analysed.value, oppositeID=oriFileID).__json__()).encode('utf-8'),
         )
         analysedFileInfo.save()
-        oriFile.extra = json.dumps(FileExtra(analyseType=AnalyseFileType.Origin.value, oppositeID=analysedFileInfo.id).__json__()).encode('utf-8')
-        oriFile.save()
+        AnalyseFileRef.objects.create(
+            file_id = analysedFileInfo.id,
+            opponent_id = oriFile.id,
+            is_analysed = True,
+        )
+        AnalyseFileRef.objects.create(
+            file_id=oriFile.id,
+            opponent_id=analysedFileInfo.id,
+            is_analysed=False,
+        )
+        return analysedFileInfo
 
-    def createStreamFile(self, filename: str,  fileUID: str, userID,fileSize=0, isAnalysed=False):
+    def createStreamFile(self, filename: str,  fileUID: str, userID,fileSize=0):
         """
         创建流回放的fileInfo，需要自己回填extra
         """
@@ -112,7 +110,6 @@ class FileInfoManager(models.Manager):
             filename=filename,
             user_id=userID,
             file_uid = fileUID,
-            is_analysed=isAnalysed,
         )
         fileinfo.save()
         return fileinfo
@@ -172,6 +169,12 @@ class FileInfoManager(models.Manager):
 # Create your models here.
 
 
+class AnalyseFileRef(models.Model):
+    file_id = models.IntegerField(db_comment='文件id')
+    opposite_file_id = models.IntegerField(db_comment='分析文件id')
+    is_analysed = models.BooleanField(default=False, db_comment='是否分析过')
+    create_time = models.DateTimeField(auto_now_add=True,null=False)
+
 
 class FileInfo(models.Model):
     file_pid = models.IntegerField(default=-1, db_comment='父目录id')
@@ -179,12 +182,10 @@ class FileInfo(models.Model):
     size = models.BigIntegerField(default=0, db_comment='文件大小')
     file_path = models.CharField(default='', max_length=4096, db_comment='文件路径')
     file_type = models.SmallIntegerField(default=0, db_comment='1:目录 2:图片 3:视频')
-    is_analysed = models.BooleanField(default=False, db_comment='是否分析过')
     file_status = models.SmallIntegerField(default=1, db_comment='0:正常 1:解析中 2:解析失败')
     filename = models.CharField(max_length=4096, db_comment='用户上传时的文件名')
     folder_type = models.SmallIntegerField(default=0, db_comment='0:普通文件夹 1:根文件夹 2:分析文件夹')
     user_id = models.IntegerField(db_comment='userID')
-    extra = models.BinaryField(null=True, db_comment='extra')
     create_time = models.DateTimeField(auto_now_add=True,null=False)
     update_time = models.DateTimeField(auto_now=True,null=False)
 
@@ -195,6 +196,9 @@ class FileInfo(models.Model):
 
     def UIDFilename(self):
         return f"{self.file_uid}.{self.filename.split('.')[-1]}"
+
+    def GetAnalyseInfo(self)-> AnalyseFileRef:
+        return AnalyseFileRef.objects.filter(file_id=self.id).first()
 
 
 
@@ -209,7 +213,7 @@ class StreamKeyInfo(models.Model):
     auth_type = models.SmallIntegerField(default=0, null=False, db_comment='1:公开 2:指定范围 3:仅自己')
     auth_user_emails = models.CharField(max_length=4096, null=True, db_comment='允许获取流的ID列表')
     class Meta:
-        db_table = 'water_detect_stream_info'
+        db_table = 'water_detect_stream_key_info'
 
     def getAuthUserEmails(self):
         if self.auth_user_emails is None:

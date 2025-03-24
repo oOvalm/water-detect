@@ -235,3 +235,5 @@ NGINX_CONFIG = {
     'host': '8.148.229.47',
     'rtmp_port': '1935',
 }
+
+REMOTE_DETECT_URL = 'http://127.0.0.1:8180/upload'

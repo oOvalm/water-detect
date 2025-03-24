@@ -32,27 +32,19 @@ class GetAnalyseProcess(APIView):
             fileInfo = FileInfo.objects.filter(file_uid=fileUID, user_id=userID).first()
             if fileInfo is None:
                 return NewErrorResponse(400, "origin file not found")
-            try:
-                if fileInfo.extra is None or len(fileInfo.extra) == 0:
-                    raise Exception("extra is empty")
-                extra = json.loads(fileInfo.extra.decode('utf-8'))
-            except Exception as e:
+            extra = fileInfo.GetAnalyseInfo()
+            if extra is None:
                 return NewSuccessResponse({
                     "fileUID": fileUID,
-                    "analyseStatus":AnalyseStatus.Waiting.value,
+                    "analyseStatus": AnalyseStatus.NotStart.value,
                 })
-
-            if extra['analyse_type'] == AnalyseFileType.Analysed.value:
+            elif extra.is_analysed:
                 return NewErrorResponse(400, "wrong file type")
-            if extra['opposite_id'] != 0:
+            else:
                 return NewSuccessResponse({
                     "fileUID": fileUID,
                     "analyseStatus":AnalyseStatus.Done.value,
                 })
-            return NewSuccessResponse({
-                "fileUID": fileUID,
-                "analyseStatus":AnalyseStatus.NotStart.value,
-            })
         except Exception as e:
             log.error(e)
             return NewErrorResponse(500, INTERNAL_ERROR)
