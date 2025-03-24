@@ -107,7 +107,7 @@
                   @click="cancelNameEdit(index)"
               ></span>
             </div>
-            <span class="op" v-if="!row.showEdit" :style="{width: row.showOp && row.id?'230px':'0px'}">
+            <span class="op" v-if="!row.showEdit" :style="{width: row.showOp && row.id?'300px':'0px'}">
               <template v-if="row.showOp && row.id">
                 <span class="iconfont icon-share1" @click="share(row)">分享</span>
                 <span

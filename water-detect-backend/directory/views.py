@@ -195,12 +195,17 @@ class FileListView(APIView):
         with transaction.atomic():
             files = FileInfo.objects.filter(id__in=file_ids, user_id=request.user.id)
             folder_ids = []
+            non_folder_ids = []
             for file in files:
                 if file.file_type == FileType.Folder.value:
                     folder_ids.append(file.id)
-            deleted_files.extend(list(files))
-            deleted_count, _ = files.delete()
-            deleted_files.extend(fileInfoService.DeleteFolders(folder_ids))
+                else:
+                    non_folder_ids.append(file.id)
+                    deleted_files.append(file)
+            FileInfo.objects.filter(id__in=non_folder_ids).delete()
+            filesInFolders = fileInfoService.GetAllFileInfoInFolders(folder_ids)
+            deleted_files.extend(filesInFolders)
+            FileInfo.objects.filter(id__in=[file.id for file in filesInFolders]).delete()
 
         for file in deleted_files:
             FileManager().DeleteFile(file)

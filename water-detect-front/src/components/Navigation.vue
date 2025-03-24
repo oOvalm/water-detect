@@ -30,6 +30,7 @@
 import {ref, reactive, getCurrentInstance, watch} from "vue";
 import {useRouter, useRoute} from "vue-router";
 import message from "@/utils/Message.js";
+import httpRequest from "@/api/httpRequest.ts";
 
 const {proxy} = getCurrentInstance();
 const router = useRouter();
@@ -74,7 +75,7 @@ const openFolder = (data) => {
   const {id, filename} = data;
   const folder = {
     filename: filename,
-    id: id,
+    id: Number(id),
   };
   folderList.value.push(folder);
   currentFolder.value = folder;
@@ -86,18 +87,21 @@ defineExpose({openFolder, init});
 //返回上一级
 const backParent = () => {
   let currentIndex = null;
+  console.log(folderList.value);
+  console.log(currentFolder.value);
   for (let i = 0; i < folderList.value.length; i++) {
-    if (folderList.value[i].id == currentFolder.value.id) {
+    if (folderList.value[i].id === currentFolder.value.id) {
       currentIndex = i;
       break;
     }
   }
+  console.log(currentIndex);
   setCurrentFolder(currentIndex - 1);
 };
 
 //点击导航 设置当前目录
 const setCurrentFolder = (index) => {
-  if (index == -1) {
+  if (index === -1) {
     //返回全部
     currentFolder.value = {id: "-1"};
     folderList.value = [];
@@ -121,7 +125,7 @@ const setPath = () => {
   router.push({
     path: route.path,
     query:
-        pathArray.length == 0
+        pathArray.length === 0
             ? ""
             : {
               path: pathArray.join("/"),
@@ -131,27 +135,25 @@ const setPath = () => {
 
 //获取当前路径的目录
 const getNavigationFolder = async (path) => {
-  message.error("getNavigationFolder not modify") // todo
+  console.log(path);
   let url = api.getFolderInfo;
   if (props.shareId) {
     url = api.getFolderInfo4Share;
   }
-  if (props.adminShow) {
-    url = api.getFolderInfo4Admin;
-  }
+  // if (props.adminShow) {
+  //   url = api.getFolderInfo4Admin;
+  // }
 
-  let result = await proxy.Request({
-    url: url,
-    showLoading: false,
+  httpRequest.get(url, {
     params: {
       path: path,
       shareId: props.shareId,
-    },
+    }
+  }).then(({data}) => {
+    folderList.value = data.data;
+  }).catch((e) => {
+    message.error("获取文件夹信息失败")
   });
-  if (!result) {
-    return;
-  }
-  folderList.value = result.data;
 };
 
 const emit = defineEmits(["navChange"]);
@@ -179,14 +181,14 @@ watch(
       const path = newVal.query.path;
       const categoryId = newVal.params.category;
       category.value = categoryId;
-      if (path == undefined) {
+      if (path === undefined) {
         init();
       } else {
-        getNavigationFolder(path);
+        // getNavigationFolder(path);
         //设置当前目录
         let pathArray = path.split("/");
         currentFolder.value = {
-          id: pathArray[pathArray.length - 1],
+          id: Number(pathArray[pathArray.length - 1]),
         };
         doCallback();
       }

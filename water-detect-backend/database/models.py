@@ -57,18 +57,6 @@ class User(AbstractBaseUser):
         db_table = 'water_detect_user'
 
 class FileInfoManager(models.Manager):
-    def createVideo(self, file_pid: int, filename: str, fileSize: int, fileID: str, user: User):
-        fileinfo = FileInfo(
-            size = fileSize,
-            file_pid = file_pid,
-            folder_type=1,
-            file_type=FileType.Video.value,
-            filename=filename,
-            user_id=user.id,
-            file_uid = fileID,
-        )
-        fileinfo.save()
-        return fileinfo
     def createAnalysedFile(self, oriFileID, analysedUID, fileSize=0):
         oriFile = super().get(id=oriFileID)
         newFilename = oriFile.filename.rsplit('.', 1)[0] + ('.jpg' if oriFile.file_type == FileType.Image.value else '.mp4')

@@ -194,6 +194,45 @@ class LocalFileService():
                 destination.write(chunk)
         return f'avatar/user_avatar_{fileID}.{GetFileSuffix(file.name)}'
 
+    def copyFile(self, fileInfo):
+        oriUID, newUID = fileInfo.file_uid, uuid.uuid4().__str__()
+        # 按照DELETE处理的逻辑，进行复制
+        # 复制文件
+        copyFiles = [
+            os.path.join(settings.MEDIA_ROOT, 'files', f"{fileInfo.UIDFilename()}"),
+            os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{oriUID}.{constants.THUMBNAIL_FILE_TYPE}"),
+        ]
+        destFiles = [
+            os.path.join(settings.MEDIA_ROOT, 'files', f"{newUID}.{GetFileSuffix(fileInfo.filename)}"),
+            os.path.join(settings.MEDIA_ROOT, 'thumbnail', f"{newUID}.{constants.THUMBNAIL_FILE_TYPE}"),
+        ]
+        for srcPath, destPath in zip(copyFiles, destFiles):
+            if os.path.exists(srcPath):
+                shutil.copy(srcPath, destPath)
+
+        if fileInfo.file_type == FileType.Video.value:
+            copyFolders = [
+                os.path.join(settings.MEDIA_ROOT, 'cuts', f"{oriUID}"),
+            ]
+            for folder in copyFolders:
+                if os.path.exists(folder):
+                    destFolder = os.path.join(settings.MEDIA_ROOT, 'cuts', f"{newUID}")
+                    shutil.copytree(folder, os.path.join(settings.MEDIA_ROOT, 'cuts', f"{newUID}"))
+                    # 将destFolder下所有文件名包含oriUID部分替换为newUID
+                    for root, dirs, files in os.walk(destFolder):
+                        for file in files:
+                            if oriUID in file:
+                                os.rename(os.path.join(root, file), os.path.join(root, file.replace(oriUID, newUID)))
+            # 单独处理m3u8
+            m3u8Path = os.path.join(settings.MEDIA_ROOT, 'cuts', f"{newUID}", 'index.m3u8')
+            if os.path.exists(m3u8Path):
+                with open(m3u8Path, 'r') as f:
+                    lines = f.readlines()
+                with open(m3u8Path, 'w') as f:
+                    for line in lines:
+                        f.write(line.replace(oriUID, newUID))
+        return newUID
+
 
 _fileManager = None
 once = threading.Lock()

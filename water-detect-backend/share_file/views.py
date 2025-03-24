@@ -47,7 +47,7 @@ class LoadShareListView(APIView):
     def get(self, request):
         page_no = int(request.query_params.get('pageNo', 1))
         page_size = int(request.query_params.get('pageSize', 10))
-        file_shares = FileShare.objects.all()
+        file_shares = FileShare.objects.filter(user_id=request.user.id).order_by('-share_time')
         paginator = Paginator(file_shares, page_size)
         page_obj = paginator.get_page(page_no)
         serializer = FileShareSerializer(page_obj, many=True)

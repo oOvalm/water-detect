@@ -183,6 +183,7 @@ import {ElMessage, ElMessageBox} from "element-plus";
 import Verify from "@/utils/Verify.js";
 
 const router = useRouter();
+const route = useRoute();
 
 // 0:注册 1:登录 2:重置密码
 const opType = ref(1);
@@ -334,7 +335,7 @@ const doSubmit = () => {
     }
     httpRequest.post(url, params).then(({data}) => {
       console.log(data)
-      if (data.code != 0) {
+      if (data.code !== 0) {
         throw data;
       }
       //注册返回
@@ -356,7 +357,8 @@ const doSubmit = () => {
         //存储cookie
         localStorage.setItem("jwt", `Bearer ${data.data.access}`);
         localStorage.setItem("userID", `${data.data.user_id}`);
-        router.push("/");
+        const redirectUrl = route.query.redirectUrl || "/";
+        router.push(redirectUrl);
       } else if (opType.value == 2) {
         //重置密码
         ElMessage.success("重置密码成功,请登录");

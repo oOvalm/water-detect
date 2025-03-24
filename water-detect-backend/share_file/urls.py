@@ -1,6 +1,7 @@
 from django.urls import path
 
-from share_file.shareView import GetShareLoginInfoView, GetShareInfoView, CheckShareCodeView, LoadFileListView
+from share_file.shareView import GetShareLoginInfoView, GetShareInfoView, CheckShareCodeView, LoadFileListView, \
+    SaveShareView
 from share_file.views import ShareFile, LoadShareListView, CancelShareView
 
 urlpatterns = [
@@ -12,4 +13,6 @@ urlpatterns = [
     path('web/getShareInfo', GetShareInfoView.as_view(), name='get_share_info'),
     path('web/checkShareCode', CheckShareCodeView.as_view(), name='check_share_code'),
     path('web/loadFileList', LoadFileListView.as_view(), name='load_file_list'),
+    path('web/saveShare', SaveShareView.as_view(), name='save_share'),
+
 ]

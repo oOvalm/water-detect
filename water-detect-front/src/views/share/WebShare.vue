@@ -4,7 +4,7 @@
       <div class="header-content">
         <div class="logo" @click="jump">
           <span class="iconfont icon-pan"></span>
-          <span class="name">Easy云盘</span>
+          <span class="name">水域检测系统 - 文件分享</span>
         </div>
       </div>
     </div>
@@ -19,16 +19,16 @@
         <div class="share-panel">
           <div class="share-user-info">
             <div class="avatar">
-              <el-avatar v-if="shareInfo.avatar && shareInfo.avatar.length > 0" :size="80"
-                         :src="`/api/${shareInfo.avatar}`"/>
+              <el-avatar v-if="shareUserInfo.avatar && shareUserInfo.avatar.length > 0" :size="80"
+                         :src="`/api/${shareUserInfo.avatar}`"/>
               <el-avatar v-else :size="80" src='https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'/>
             </div>
             <div class="share-info">
               <div class="user-info">
-                <span class="nick-name">{{ shareInfo.username }} </span>
-                <span class="share-time">分享于 {{ formatDate(shareInfo.share_time) }}</span>
+                <span class="nick-name">{{ shareUserInfo.username }} </span>
+                <span class="share-time">分享于 {{ formatDate(shareUserInfo.share_time) }}</span>
               </div>
-              <div class="file-name">分享文件：{{ shareInfo.filename }}</div>
+              <div class="file-name">分享文件：{{ shareUserInfo.filename }}</div>
             </div>
           </div>
           <div class="share-op-btn">
@@ -51,11 +51,11 @@
           </div>
         </div>
         <!--导航-->
-        <!--        <Navigation-->
-        <!--            ref="navigationRef"-->
-        <!--            @navChange="navChange"-->
-        <!--            :shareId="shareId"-->
-        <!--        ></Navigation>-->
+        <Navigation
+            ref="navigationRef"
+            @navChange="navChange"
+            :shareId="shareId"
+        ></Navigation>
         <div class="file-list">
           <Table
               :columns="columns"
@@ -67,7 +67,7 @@
               :showPageSize="false"
               @rowSelected="rowSelected"
           >
-            <template #fileName="{ index, row }">
+            <template #filename="{ index, row }">
               <div
                   class="file-item"
                   @mouseenter="showOp(row)"
@@ -86,9 +86,9 @@
                 </span>
                 <span class="op">
                   <span
-                      v-if="row.folderType === 0"
+                      v-if="row.file_type !== 1"
                       class="iconfont icon-download"
-                      @click="download(row.fileId)"
+                      @click="download(row.id)"
                   >下载</span
                   >
                   <template v-if="row.showOp && !shareInfo.currentUser">
@@ -101,7 +101,7 @@
                 </span>
               </div>
             </template>
-            <template #fileSize="{ index, row }">
+            <template #size="{ index, row }">
               <span v-if="row.file_type !== 1">
                 {{ Utils.size2Str(row.size) || 0 }}
               </span>
@@ -113,6 +113,7 @@
       <FolderSelect
           ref="folderSelectRef"
           @folderSelect="save2MyPanDone"
+          buttonText="保存到此"
       ></FolderSelect>
       <!--预览-->
       <Preview ref="previewRef"></Preview>
@@ -137,9 +138,10 @@ import Table from "@/components/Table.vue"
 const router = useRouter();
 const route = useRoute();
 const api = {
+  getShareInfo: "/share/web/getShareInfo",
   getShareLoginInfo: "/share/web/getShareLoginInfo",
   loadFileList: "/share/web/loadFileList",
-  createDownloadUrl: "/share/createDownloadUrl",
+  createDownloadUrl: "/directory/createDownload",
   download: "/api/directory/download",
   cancelShare: "/share/cancelShare",
   saveShare: "/share/web/saveShare",
@@ -147,7 +149,7 @@ const api = {
 const currentUserID = ref(-1);
 const shareId = route.params.shareId;
 const shareInfo = ref({});
-
+const shareUserInfo = ref({})
 
 //列表
 const columns = [
@@ -168,6 +170,7 @@ const columns = [
     width: 200,
   },
 ];
+const currentFolder = ref({fileId: 0});
 const tableData = ref({});
 const tableOptions = {
   extHeight: 80,
@@ -183,6 +186,11 @@ const loadDataList = async () => {
   };
   httpRequest(api.loadFileList, {params: params}).then(({data}) => {
     tableData.value = data.data;
+    const formattedData = data.data.list.map(row => {
+      row.update_time = formatDate(row.update_time);
+      return row;
+    });
+    tableData.value.list = formattedData
   }).catch((e) => {
     message.error("加载数据失败");
     console.log(e);
@@ -202,6 +210,13 @@ const getShareInfo = async () => {
     shareInfo.value = data.data;
     shareInfo.value.currentUser = (shareInfo.value.user_id === currentUserID.value);
     loadDataList();
+    httpRequest.get(api.getShareInfo, {params: {shareId: shareId}}).then(({data}) => {
+      if (data.code !== 0) throw data.msg;
+      shareUserInfo.value = data.data;
+    }).catch((e) => {
+      message.error('获取用户信息失败');
+      console.log(e);
+    })
   }).catch((e) => {
     router.push("/shareCheck/" + shareId);
   });
@@ -226,15 +241,14 @@ const selectFileIdList = ref([]);
 const rowSelected = (rows) => {
   selectFileIdList.value = [];
   rows.forEach((item) => {
-    selectFileIdList.value.push(item.fileId);
+    selectFileIdList.value.push(item.id);
   });
 };
 
 //目录
-const currentFolder = ref({fileId: 0});
 const navChange = (data) => {
   const {curFolder} = data;
-  currentFolder.value = curFolder;
+  currentFolder.value.fileId = curFolder.id;
   loadDataList();
 };
 
@@ -242,7 +256,8 @@ const navChange = (data) => {
 const previewRef = ref();
 const navigationRef = ref();
 const preview = (data) => {
-  if (data.folderType == 1) {
+  console.log(data);
+  if (data.file_type === 1) {
     navigationRef.value.openFolder(data);
     return;
   }
@@ -252,7 +267,7 @@ const preview = (data) => {
 
 //下载文件
 const download = async (fileId) => {
-  httpRequest.get('directory/createDownload/' + fileId).then(({data}) => {
+  httpRequest.get(`${api.createDownloadUrl}/${fileId}`).then(({data}) => {
     if (data.code !== 0) throw data.msg
     window.location.href = "/api/directory/download/" + data.data.code;
   }).catch((e) => {
@@ -264,10 +279,11 @@ const download = async (fileId) => {
 const folderSelectRef = ref();
 const save2MyPanFileIdArray = [];
 const save2MyPan = () => {
-  if (selectFileIdList.value.length == 0) {
+  console.log(selectFileIdList.value)
+  if (selectFileIdList.value.length === 0) {
     return;
   }
-  if (!localStorage.get("jwt")) {
+  if (!localStorage.getItem("jwt")) {
     router.push("/login?redirectUrl=" + route.path);
     return;
   }
@@ -275,45 +291,45 @@ const save2MyPan = () => {
   folderSelectRef.value.showFolderDialog();
 };
 const save2MyPanSingle = (row) => {
-  if (!localStorage.get("jwt")) {
+  if (!localStorage.getItem("jwt")) {
     router.push("/login?redirectUrl=" + route.path);
     return;
   }
-  save2MyPanFileIdArray.values = [row.fileId];
+  save2MyPanFileIdArray.values = [row.id];
   folderSelectRef.value.showFolderDialog();
 };
 //执行保存操作
 const save2MyPanDone = async (folderId) => {
-  message.error("todo");
-  // let result = await httpRequest({
-  //   url: api.saveShare,
-  //   params: {
-  //     shareId: shareId,
-  //     shareFileIds: save2MyPanFileIdArray.values.join(","),
-  //     myFolderId: folderId,
-  //   },
-  // });
-  // if (!result) {
-  //   return;
-  // }
-  // loadDataList();
-  // proxy.Message.success("保存成功");
-  // folderSelectRef.value.close();
+  httpRequest.post(api.saveShare, {
+    shareId: shareId,
+    shareFileIds: save2MyPanFileIdArray.values,
+    filePid: folderId,
+  }).then(({data}) => {
+    if (data.code !== 0) throw data.msg;
+    message.success("保存成功");
+    folderSelectRef.value.close();
+  }).catch((e) => {
+    message.error("保存失败");
+    console.error(e);
+  });
 };
 
 //取消分享
 const cancelShare = () => {
   Confirm(`你确定要取消分享吗？`, async () => {
-    let param = {
+    let data = {
       shareIds: shareId,
-    };
-    httpRequest(api.cancelShare, {params: param}).then(({data}) => {
+    }
+    httpRequest.post(api.cancelShare, data).then(({data}) => {
+      if (data.code !== 0) {
+        message.error(`取消分享失败, ${data.msg}`)
+      }
       message.success("取消分享成功");
-      router.push("/");
+      jump();
     }).catch((e) => {
-      message.error("操作失败");
-      console.log(e);
-    })
+      message.error(`取消分享失败, ${data.msg}`)
+      console.log(e)
+    });
   });
 };
 
@@ -323,7 +339,7 @@ const jump = () => {
 </script>
 
 <style lang="scss" scoped>
-@import "@/assets/file.list.scss";
+@use "@/assets/file.list.scss";
 
 .header {
   width: 100%;

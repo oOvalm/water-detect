@@ -3,12 +3,16 @@ from database.models import FileInfo
 from database.serializers import FileInfoSerializer
 
 
-def DeleteFolders(folderIDs: list):
+def GetAllFileInfoInFolders(folderIDs: list):
+    """
+    通过bfs的方式获取文件夹下所有文件，包含文件夹本身(BFS序)
+    """
     q = []
+    bfsFileInfos = []
     for fileID in folderIDs:
         fileInfos = FileInfo.objects.filter(file_pid=fileID)
         q.extend([fileInfo.id for fileInfo in fileInfos])
-    deleted_files = []
+        bfsFileInfos.append(FileInfo.objects.get(id=fileID))
     while len(q) > 0:
         fileID = q.pop(0)
         file = FileInfo.objects.get(id=fileID)
@@ -16,6 +20,5 @@ def DeleteFolders(folderIDs: list):
             children = FileInfo.objects.filter(file_pid=fileID)
             for child in children:
                 q.append(child.id)
-        deleted_files.append(file)
-        file.delete()
-    return deleted_files
+        bfsFileInfos.append(file)
+    return bfsFileInfos

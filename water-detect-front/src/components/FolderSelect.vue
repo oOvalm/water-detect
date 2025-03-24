@@ -40,6 +40,12 @@ import Dialog from '@/components/Dialog.vue'
 import icon from '@/components/Icon.vue'
 import httpRequest from "@/api/httpRequest.ts";
 import message from "@/utils/Message.js";
+const props = defineProps({
+  buttonText: {
+    type: String,
+    default: "移动到此"
+  }
+})
 
 const dialogConfig = ref({
   show: false,
@@ -50,7 +56,7 @@ const dialogConfig = ref({
       click: () => {
         folderSelect();
       },
-      text: "移动到此",
+      text: props.buttonText,
     },
   ],
 });
@@ -71,7 +77,9 @@ const loadFolder = async () => {
     }
   }).then(({data}) => {
     if (data.code !== 0) throw data.msg;
-    folderList.value = data.data;
+    folderList.value = data.data.filter(item => {
+      return item.file_type === 1;
+    });
   }).catch((e) => {
     console.log(e);
     message.error("获取目录信息失败")
@@ -83,7 +91,7 @@ const close = () => {
 };
 
 //展示弹出框对外的方法
-const showFolderDialog = (_selectedFileIDs) => {
+const showFolderDialog = (_selectedFileIDs = []) => {
   dialogConfig.value.show = true;
   selectedFileIDs.value = _selectedFileIDs;
   filePid.value = -1;

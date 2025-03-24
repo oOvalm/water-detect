@@ -4,3 +4,7 @@
 /water-detect-backend/media/
 media/
 __pycache__/
+*.mp4
+*.avi
+/yoloDetectProject/service/runs
+/yoloDetectProject/service/test-data

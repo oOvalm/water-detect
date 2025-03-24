@@ -1,8 +1,12 @@
+import uuid
+
 from django.utils import timezone
 from rest_framework.views import APIView
 
 from common.customResponse import NewSuccessResponse, NewErrorResponse
-from common.db_model import ShareValidTypeEnums
+from common.db_model import ShareValidTypeEnums, FileType
+from common_service.fileInfoService import GetAllFileInfoInFolders
+from common_service.fileService import FileManager
 from database.models import FileInfo, User
 from database.serializers import FileInfoSerializer
 from directory.views import FilePagination
@@ -100,12 +104,11 @@ class LoadFileListView(APIView):
         query = {
             'user_id': session_share_dto['share_user_id'],
         }
-        if file_pid and file_pid != "0":
+        if file_pid and file_pid != "0" and file_pid!= "-1":
             query['file_pid'] = file_pid
         else:
             query['id'] = session_share_dto['file_id']
         files = FileInfo.objects.filter(**query).order_by('update_time')
-        # 这里可以添加分页逻辑
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(files, request)
         if page is not None:
@@ -118,3 +121,64 @@ class LoadFileListView(APIView):
             'pageTotal': 0,
             'list': []
         })
+
+
+class SaveShareView(APIView):
+    def post(self, request):
+        share_code = request.data.get('shareId')
+        file_ids = request.data.get('shareFileIds')
+        file_pid = request.data.get('filePid')
+        
+        if not all([share_code, file_ids, file_pid]):
+            return NewErrorResponse(400, '参数不完整')
+        file_pid = int(file_pid)
+        try:
+            share = FileShare.objects.get(share_code=share_code)
+            if share.valid_type != ShareValidTypeEnums.FOREVER.type and share.expire_time and timezone.now() > share.expire_time:
+                return NewErrorResponse(900, '分享已过期')
+
+            files = FileInfo.objects.filter(id__in=file_ids, user_id=share.user_id)
+            if file_pid != -1:
+                _ = FileInfo.objects.get(id=file_pid, user_id=request.user.id)
+
+            folder_files = []
+            non_folder_files = []
+            for file in files:
+                if file.file_type == FileType.Folder.value:
+                    folder_files.append(file)
+                else:
+                    non_folder_files.append(file)
+            allFilesNeedCopy = non_folder_files + GetAllFileInfoInFolders([file.id for file in folder_files])
+
+            folderMapping = {}
+
+            # 按照BFS序转存
+            for file in allFilesNeedCopy:
+                new_file_uid = None
+                if file.file_type != FileType.Folder.value:
+                    new_file_uid = FileManager().copyFile(file)
+                new_file_pid = file_pid if file.id not in folderMapping else folderMapping[file.id]
+                target_folder_path = FileInfo.objects.getFilePath(new_file_pid)
+                new_file = FileInfo.objects.create(
+                    file_pid=new_file_pid,
+                    file_uid=new_file_uid,
+                    user_id=request.user.id,
+                    size=file.size,
+                    file_path=target_folder_path + '/' + file.filename,
+                    file_type=file.file_type,
+                    file_status=file.file_status,
+                    filename=file.filename,
+                    folder_type=file.folder_type,
+                )
+                if file.file_type == FileType.Folder.value:
+                    folderMapping[file.id] = new_file.id
+
+            return NewSuccessResponse()
+            
+        except FileShare.DoesNotExist:
+            return NewErrorResponse(400, '分享不存在')
+        except FileInfo.DoesNotExist:
+            return NewErrorResponse(400, '文件或目标文件夹不存在')
+        except Exception as e:
+            return NewErrorResponse(500, str(e))
+
