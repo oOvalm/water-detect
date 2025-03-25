@@ -8,3 +8,5 @@ __pycache__/
 *.avi
 /yoloDetectProject/service/runs
 /yoloDetectProject/service/test-data
+/yoloDetectProject/detect-model/water-2/
+/yoloDetectProject/detect-model/train4/

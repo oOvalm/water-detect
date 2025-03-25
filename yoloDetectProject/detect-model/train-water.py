@@ -9,9 +9,16 @@ def download():
 
 def train():
     from ultralytics import YOLO
-    model = YOLO("yolo11-seg.yaml")
-    results = model.train(data="coco8.yaml", epochs=3, imgsz=640)
+    model = YOLO("yolo11n-seg.pt")
+    results = model.train(data="/data/coding/gao/water-2/water.yaml", epochs=100, imgsz=640)
     success = model.export()
 
+def baseTrain():
+    from ultralytics import YOLO
+    model = YOLO("yolo11n-seg.pt")  # load a pretrained model (recommended for training)
+    results = model.train(data="coco8-seg.yaml", epochs=100, imgsz=640)
+
 if __name__ == '__main__':
-    train();
+    download()
+    # baseTrain()
+    # train()

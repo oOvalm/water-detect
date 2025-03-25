@@ -65,7 +65,11 @@ def GetFromModel(path: str, destFolderName: str, projFolderName: str):
         return GetFromModel_Mock(path, destFolderName, projFolderName)
 
     if USE_REMOTE:
-        return GetFromRemote(path, destFolderName, projFolderName)
+        destFolderPath = os.path.join(BASE_TMP, projFolderName, destFolderName)
+        outputFilename = f"{destFolderName}.mp4"
+        if not os.path.exists(destFolderPath):
+            os.makedirs(destFolderPath)
+        return GetFromRemote(path, destFolderPath, outputFilename)
 
     # 使用模型对视频文件进行预测，并保存结果
     results = singleYOLO().predict(source=path, save=True,
@@ -78,23 +82,44 @@ def GetFromModel(path: str, destFolderName: str, projFolderName: str):
 def AnalyseImage(image):
     if USE_MOCK:
         return to_grayscale(image)
+    if USE_REMOTE:
+        return GetFromRemoteImage(image)
     result = singleYOLO()(image, imgsz=320)
     return result[0].plot()
 
 
 
-def GetFromRemote(file_path, destFolderName, projFolderName):
+def GetFromRemote(file_path, destFolderPath, outputFilename):
     url = settings.REMOTE_DETECT_URL
     try:
         with open(file_path, 'rb') as file:
             files = {'file': file}
-            response = requests.post(url, files=files)
+            data = {
+                'output_filename': outputFilename,
+                'file_type': 'video'
+            }
+            response = requests.post(url, files=files, timeout=300, data=data)  # 分析时间可能很长, 5min
             if response.status_code == 200:
-                output_file_path = GetYOLOOutPutPath(file_path, destFolderName, projFolderName)
+                output_file_path = f"{destFolderPath}/{outputFilename}"
                 with open(output_file_path, 'wb') as output_file:
                     output_file.write(response.content)
-                logger.info(f'File uploaded and result saved to {output_file_path}')
             else:
                 logger.info(f'Upload failed: {response.text}')
+    except FileNotFoundError:
+        logger.error('File not found')
+
+def GetFromRemoteImage(image):
+    url = settings.REMOTE_DETECT_URL
+    try:
+        data = {
+            'output_filename': "wow.jpg",   # 没用
+            'file_type': 'image',
+            'suffix': 'jpg',
+        }
+        response = requests.post(url, files={'file': image}, timeout=300, data=data)  # 分析时间可能很长, 5min
+        if response.status_code == 200:
+            return response.content
+        else:
+            logger.info(f'Upload failed: {response.text}')
     except FileNotFoundError:
         logger.error('File not found')

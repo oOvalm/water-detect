@@ -1,6 +1,9 @@
 import logging
 import os
+import subprocess
+import uuid
 
+import cv2
 import numpy as np
 import requests
 from moviepy import VideoFileClip
@@ -9,7 +12,7 @@ from ultralytics import YOLO
 USE_MOCK = False # 测试时使用灰度图代替YOLO检测
 logger = logging.getLogger(__name__)
 
-YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\yoloDetectProject\service\model\yolo11n.pt'
+YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\yoloDetectProject\service\model\water_detect_model_45itr.pt'
 model = YOLO(YOLO_MODEL_PATH)
 
 BASE_FOLDER = r'D:\coding\graduation-design\water-detect\yoloDetectProject\service\tmp'
@@ -46,14 +49,30 @@ def convert_to_black_and_white(input_path, output_path):
 #     convert_to_black_and_white(path, os.path.join(tmp, f'{oriFileName}.avi'))
 #     return GetYOLOOutPutPath(path, destFolderName, projFolderName)
 
-def AnalyseVideo(file):
+def CompressVideo(input_path, output_path):
+    # 打开输入视频文件
+    subprocess.run([
+        'ffmpeg', '-i', input_path,
+        '-c:v', 'h264_amf','-profile:v', 'main',
+        '-c:a', 'copy',
+        output_path
+    ], check=True)
+
+def AnalyseVideo(filePath, outputFolder, destName):
     # if USE_MOCK:
     #     return GetFromModel_Mock(path, destFolderName, projFolderName)
-    return model(file)
+    uid = str(uuid.uuid4())
+    model(filePath, save=True, project=outputFolder, name=uid)
+    srcFilename = filePath.split('\\')[-1].split('.')[0]
+    srcPath = f"{outputFolder}/{uid}/{srcFilename}.avi"
+    DestPath = f"{outputFolder}/{uid}/{destName}.mp4"
+    CompressVideo(srcPath, DestPath)
+    return DestPath
 
-def AnalyseImage(image):
-    if USE_MOCK:
-        return to_grayscale(image)
-    result = model(image)
-    return result[0].plot()
 
+def AnalyseImage(filePath, outputFolder, suffix,uid):
+    # if USE_MOCK:
+    #     return GetFromModel_Mock(path, destFolderName, projFolderName)
+    model(filePath, save=True, project=outputFolder, name=uid)
+    DestPath = f"{outputFolder}/{uid}/{uid}.{suffix}"
+    return DestPath

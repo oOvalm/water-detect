@@ -45,9 +45,9 @@ def convert_coco_to_yolo(coco_file_path, output_dir):
 base = "water-2"
 # 使用示例
 path = [
-    f'{base}/train',
-    f'{base}/validate'
+    # f'{base}/train',
+    f'{base}/valid',
     f'{base}/test',
 ]
 for p in path:
-    convert_coco_to_yolo(f"/data/coding/water_detect/{p}/_annotations.coco.json", f"{p}/labels")    
+    convert_coco_to_yolo(f"/data/coding/gao/{p}/_annotations.coco.json", f"{p}/labels")    

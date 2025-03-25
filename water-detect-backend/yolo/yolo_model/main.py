@@ -46,16 +46,10 @@ def AnalyseTsVideoFolder(path: str, fileUID: str):
     for i, file in enumerate(files):
         if file.endswith('.ts'):
             filename = f"analysed_{file.split('.')[0]}"
-            GetFromModel(os.path.join(path, file), filename, fileUID)
+            videoPath = GetFromModel(os.path.join(path, file), filename, fileUID)
             # todo: 模型用gpu计算后, 这可以用线程处理
-            if True:
-                output_process = resolveDoneVideo(output_process, os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
-                                 destFolder, filename)
-            else:
-                thread = threading.Thread(target=resolveDoneVideo, args=(output_process, os.path.join(tempAnalyseFolder, filename, f"{file.split('.')[0]}.avi"),
-                                 destFolder, filename,))
-                thread.start()
-                threads.append(thread)
+            output_process = resolveDoneVideo(output_process, videoPath, destFolder, filename)
+
         redisService.UploadAnalyseProcess(fileUID, total=len(files), finished=i+1)
 
     for thread in threads:
