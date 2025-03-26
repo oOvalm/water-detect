@@ -1,16 +1,19 @@
 import logging
 import os
+import uuid
+from io import BytesIO
 
 import numpy as np
 import requests
+from PIL import Image
 from moviepy import VideoFileClip
 from ultralytics import YOLO
 
 from common.annotation import singleton
 from waterDetect import settings
 
-USE_MOCK = True
-USE_REMOTE = False
+USE_MOCK = False
+USE_REMOTE = True
 
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
@@ -79,11 +82,11 @@ def GetFromModel(path: str, destFolderName: str, projFolderName: str):
         pass
     return GetYOLOOutPutPath(path, destFolderName, projFolderName)
 
-def AnalyseImage(image):
+def AnalyseImage(image, **kwargs):
     if USE_MOCK:
         return to_grayscale(image)
     if USE_REMOTE:
-        return GetFromRemoteImage(image)
+        return GetFromRemoteImage(image, **kwargs)
     result = singleYOLO()(image, imgsz=320)
     return result[0].plot()
 
@@ -108,18 +111,21 @@ def GetFromRemote(file_path, destFolderPath, outputFilename):
     except FileNotFoundError:
         logger.error('File not found')
 
-def GetFromRemoteImage(image):
+def GetFromRemoteImage(image, **kwargs):
     url = settings.REMOTE_DETECT_URL
     try:
+        filePath = kwargs['filePath']
         data = {
             'output_filename': "wow.jpg",   # 没用
             'file_type': 'image',
             'suffix': 'jpg',
         }
-        response = requests.post(url, files={'file': image}, timeout=300, data=data)  # 分析时间可能很长, 5min
-        if response.status_code == 200:
-            return response.content
-        else:
-            logger.info(f'Upload failed: {response.text}')
+        with open(filePath, 'rb') as file:
+            files = {'file': file}
+            response = requests.post(url, files=files, timeout=300, data=data)  # 分析时间可能很长, 5min
+            if response.status_code == 200:
+                return np.array(Image.open(BytesIO(response.content)))
+            else:
+                logger.info(f'Upload failed: {response.text}')
     except FileNotFoundError:
         logger.error('File not found')

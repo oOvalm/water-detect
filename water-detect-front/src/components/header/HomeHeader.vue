@@ -1,11 +1,9 @@
 <template>
   <el-header class="home-header">
-    <!-- 左边图标 -->
     <div class="left-icon">
-      <span class="iconfont icon-pan"></span>
-      <span class="name">xxx logo</span>
+      <img src="@/assets/logo.png" alt="Logo" class="logo"/>
+      <span class="name">水域检测平台</span>
     </div>
-    <!-- 右边头像及下拉框 -->
     <div class="right-avatar">
       <el-popover
           :width="800"
@@ -112,6 +110,11 @@ onMounted(() => {
 .left-icon {
   display: flex;
   align-items: center;
+
+  .logo {
+    height: 40px;
+    margin-right: 5px;
+  }
 
   .icon-pan {
     font-size: 40px;

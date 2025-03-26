@@ -68,7 +68,7 @@ def AnalyseImageWithPath(path: str, fileUID: str):
     from common_service.fileService import FileManager
     logger.info(f"start analyse image {fileUID}")
     image = np.array(Image.open(path))
-    analysedImage = AnalyseImage(image)
+    analysedImage = AnalyseImage(image, filePath=path)
     targetPath = os.path.join(SOURCE_PATH, f"analysed_{fileUID}.jpg")
     Image.fromarray(analysedImage).save(targetPath)
     FileManager().CreateThumbnail(targetPath, f"analysed_{fileUID}", FileType.Image.value)

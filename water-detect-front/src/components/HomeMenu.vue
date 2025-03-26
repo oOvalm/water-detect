@@ -35,47 +35,47 @@ import {useRoute} from "vue-router";
 // 定义菜单数据
 const activeID = ref()
 const menus = ref([
+  // {
+  //   index: 0,
+  //   title: '首页',
+  //   icon: House,
+  //   path: '/',
+  // },
   {
     index: 0,
-    title: '首页',
-    icon: House,
+    title: '在线分析',
+    icon: VideoCamera,
     path: '/',
   },
   {
     index: 1,
-    title: '在线分析',
-    icon: VideoCamera,
-    path: 'analyse',
-  },
-  {
-    index: 2,
     title: "key管理",
     icon: Key,
     path: 'stream-key'
   },
   {
-    index: 3,
+    index: 2,
     title: '分析记录',
     icon: Files,
     path: 'disk'
   },
+  // {
+  //   index: 4,
+  //   title: '测试页面',
+  //   icon: Files,
+  //   path: 'test'
+  // },
   {
-    index: 4,
-    title: '测试页面',
-    icon: Files,
-    path: 'test'
-  },
-  {
-    index: 5,
-    title: '个人中心',
-    icon: Avatar,
-    path: 'profile'
-  },
-  {
-    index: 6,
+    index: 3,
     title: '我的分享',
     icon: Share,
     path: 'share'
+  },
+  {
+    index: 4,
+    title: '个人中心',
+    icon: Avatar,
+    path: 'profile'
   }
 ]);
 

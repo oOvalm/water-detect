@@ -236,4 +236,4 @@ NGINX_CONFIG = {
     'rtmp_port': '1935',
 }
 
-REMOTE_DETECT_URL = 'http://127.0.0.1:8180/upload'
+REMOTE_DETECT_URL = 'http://127.0.0.1:5000/ananlyse'

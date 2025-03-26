@@ -72,12 +72,12 @@ class FileInfoManager(models.Manager):
         analysedFileInfo.save()
         AnalyseFileRef.objects.create(
             file_id = analysedFileInfo.id,
-            opponent_id = oriFile.id,
+            opposite_file_id = oriFile.id,
             is_analysed = True,
         )
         AnalyseFileRef.objects.create(
             file_id=oriFile.id,
-            opponent_id=analysedFileInfo.id,
+            opposite_file_id=analysedFileInfo.id,
             is_analysed=False,
         )
         return analysedFileInfo
@@ -162,6 +162,8 @@ class AnalyseFileRef(models.Model):
     opposite_file_id = models.IntegerField(db_comment='分析文件id')
     is_analysed = models.BooleanField(default=False, db_comment='是否分析过')
     create_time = models.DateTimeField(auto_now_add=True,null=False)
+    class Meta:
+        db_table = 'water_detect_analyse_file_ref'
 
 
 class FileInfo(models.Model):

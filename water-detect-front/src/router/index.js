@@ -11,13 +11,13 @@ const router = createRouter({
             meta: {needLogin: true},
             component: () => import('@/views/BaseHomePage.vue'),
             children: [
+                // {
+                //     path: '/',
+                //     name: '主页',
+                //     component: () => import('@/views/models/HomePage.vue'),
+                // },
                 {
                     path: '/',
-                    name: '主页',
-                    component: () => import('@/views/models/HomePage.vue'),
-                },
-                {
-                    path: 'analyse',
                     name: '在线分析',
                     component: () => import('@/views/models/OnlineAnalyse.vue')
                 },

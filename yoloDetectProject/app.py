@@ -9,8 +9,8 @@ import os
 from service import AnalyseImage, AnalyseVideo
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'output'
+UPLOAD_FOLDER = r'D:\coding\graduation-design\water-detect\yoloDetectProject\uploads'
+OUTPUT_FOLDER = r'D:\coding\graduation-design\water-detect\yoloDetectProject\output'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
