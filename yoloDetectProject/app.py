@@ -40,17 +40,20 @@ def upload_file():
     if file.filename == '':
         return 'No selected file', 400
     if file:
+        file_or_path, filename = "", None
         if fileType == 'image':
             fileSuffix = request.form.get('suffix')
             uid = str(uuid.uuid4())
             filename = os.path.join(app.config['UPLOAD_FOLDER'], f"{uid}.{fileSuffix}")
             file.save(filename)
             file_or_path = AnalyseImage(filename, OUTPUT_FOLDER, fileSuffix, uid)
+            os.remove(filename)
             return send_file(file_or_path, as_attachment=True)
         else:
             filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
             file.save(filename)
             file_or_path = AnalyseVideo(filename, OUTPUT_FOLDER, outputFilename)
+            os.remove(filename)
             return send_file(file_or_path, as_attachment=True)
 
 
