@@ -3,7 +3,7 @@
     <div class="header">
       <div class="header-content">
         <div class="logo" @click="jump">
-          <span class="iconfont icon-pan"></span>
+          <img src="../../assets/logo-nobg.png" alt="Logo" class="icon-pan"/>
           <span class="name">水域检测系统 - 文件分享</span>
         </div>
       </div>
@@ -350,7 +350,7 @@ const jump = () => {
   .header-content {
     width: 70%;
     margin: 0px auto;
-    color: #fff;
+    color: #ffffff;
     line-height: 50px;
 
     .logo {
@@ -359,7 +359,9 @@ const jump = () => {
       cursor: pointer;
 
       .icon-pan {
-        font-size: 40px;
+        background-color: white;
+        height: 40px;
+        margin-right: 5px;
       }
 
       .name {

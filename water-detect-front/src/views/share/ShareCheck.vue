@@ -2,8 +2,8 @@
   <div class="share">
     <div class="body-content">
       <div class="logo">
-        <span class="iconfont icon-pan"></span>
-        <span class="name">Easy云盘</span>
+        <img src="../../assets/logo-nobg.png" alt="Logo" class="logo-icon"/>
+        <span class="name">水域检测平台</span>
       </div>
       <div class="code-panel">
         <div class="file-info">
@@ -132,16 +132,16 @@ const checkShare = async () => {
       align-items: center;
       justify-content: center;
 
-      .icon-pan {
-        font-size: 60px;
-        color: #409eff;
+      .logo-icon {
+        height: 40px;
+        margin-right: 5px;
       }
 
       .name {
         font-weight: bold;
         margin-left: 5px;
         font-size: 25px;
-        color: #409eff;
+        //color: #409eff;
       }
     }
 

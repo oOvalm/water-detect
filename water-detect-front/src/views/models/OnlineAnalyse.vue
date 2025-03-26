@@ -8,7 +8,8 @@
       </el-button>
       <!--      <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>-->
       <el-checkbox class="btn" v-model="isSyncVideo" label="是否同步两侧视频" @click="switchSync"/>
-      <el-progress type="dashboard" :percentage="analyseProgress" v-if="fileInfo.id"
+      <el-progress type="dashboard" :percentage="analyseProgress"
+                   v-if="fileInfo.id && fileInfo.file_type === fileTypes.Video"
                    :status="analyseProgress >= 100?'success':''">
         <template #default="{ percentage }">
           <span class="percentage-value">{{ percentage }}%</span>

@@ -472,7 +472,7 @@ const router = useRouter();
 const openWithCompare = (row) => {
   console.log('compare,', row)
   router.push({
-    path: '/analyse',
+    path: '/',
     query: {
       id: row.id,
     }

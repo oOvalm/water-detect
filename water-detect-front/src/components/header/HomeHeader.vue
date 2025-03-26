@@ -1,7 +1,7 @@
 <template>
   <el-header class="home-header">
     <div class="left-icon">
-      <img src="@/assets/logo.png" alt="Logo" class="logo"/>
+      <img src="../../assets/logo-nobg.png" alt="Logo" class="logo"/>
       <span class="name">水域检测平台</span>
     </div>
     <div class="right-avatar">
