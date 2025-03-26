@@ -1,21 +1,39 @@
 <template>
   <div class="top">
     <div class="top-op">
-      <el-input class="stream-key-input" v-model="streamKey" placeholder="请输入 串流id"/>
-      <el-button class="btn" type="primary" @click="uploadRTSPStream"> {{
-          isStreaming ? '重新加载流' : '播放流'
-        }}
-      </el-button>
-      <!--      <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>-->
-      <el-checkbox class="btn" v-model="isSyncVideo" label="是否同步两侧视频" @click="switchSync"/>
-      <el-progress type="dashboard" :percentage="analyseProgress"
-                   v-if="fileInfo.id && fileInfo.file_type === fileTypes.Video"
-                   :status="analyseProgress >= 100?'success':''">
-        <template #default="{ percentage }">
-          <span class="percentage-value">{{ percentage }}%</span>
-          <span class="percentage-label">分析进度</span>
-        </template>
-      </el-progress>
+      <div>
+        <el-input class="stream-key-input" v-model="streamKey" placeholder="请输入 串流id"/>
+        <el-button class="btn" type="primary" @click="uploadRTSPStream"> {{
+            isStreaming ? '重新加载流' : '播放流'
+          }}
+        </el-button>
+        <!--      <el-button class="btn" type="success" @click="startAnalysis">开始分析</el-button>-->
+        <el-checkbox class="btn" v-model="isSyncVideo" label="是否同步两侧视频" @click="switchSync"/>
+        <el-progress type="dashboard" :percentage="analyseProgress"
+                     v-if="fileInfo.id && fileInfo.file_type === fileTypes.Video"
+                     :status="analyseProgress >= 100?'success':''">
+          <template #default="{ percentage }">
+            <span class="percentage-value">{{ percentage }}%</span>
+            <span class="percentage-label">分析进度</span>
+          </template>
+        </el-progress>
+      </div>
+      <div>
+        <el-form :model="fileInfo" v-if="fileInfo.id" size="small" class="file-info-form" title="当前播放的文件信息">
+          <el-form-item label="文件名">
+            <span>{{ fileInfo.filename }}</span>
+          </el-form-item>
+          <el-form-item label="文件类型">
+            <span>{{ fileInfo.file_type === fileTypes.Video ? "视频" : "图片" }}</span>
+          </el-form-item>
+          <el-form-item label="文件大小">
+            <span>{{ Utils.size2Str(fileInfo.size) || 0 }}</span>
+          </el-form-item>
+          <el-form-item label="上传时间">
+            <span>{{ formatDate(fileInfo.create_time) }}</span>
+          </el-form-item>
+        </el-form>
+      </div>
     </div>
   </div>
   <div class="video-container" v-if="(fileInfo.id && fileInfo.file_type === fileTypes.Video) || isStreaming">
@@ -71,9 +89,10 @@ import {RTMP_HOST} from "@/constants";
 import DPlayer from "dplayer";
 import Hls from "hls.js";
 import DoubleImage from "@/components/DoubleImage.vue";
+import * as Utils from "@/utils/Utils.ts";
+import {formatDate} from "@/utils/Utils.ts";
 
 const fileTypes = getCurrentInstance().appContext.config.globalProperties.$FileType
-
 
 const emit = defineEmits(["addFile"]);
 const fileInfo = ref({}); // 原始文件信息
@@ -133,7 +152,6 @@ const fetchProcess = () => {
       }
     })
   }
-
 
   if (analyseStatus.value !== 3) {
     httpRequest.get(`/analyse/getAnalyseProcess/${fileInfo.value.file_uid}`).then(({data}) => {
@@ -195,7 +213,6 @@ defineExpose({uploadDone});
 //   }
 // })
 
-
 onMounted(() => {
   let tmp = localStorage.getItem("isSyncVideo")
   console.log(tmp);
@@ -216,11 +233,16 @@ onUnmounted(() => {
     clearInterval(timer);
   }
 });
-
 </script>
 
 <style lang="scss" scoped>
 @use "@/assets/file.list.scss";
+
+.top-op {
+  display: flex;
+  justify-content: space-between; // 让子元素左右分布
+  align-items: center;
+}
 
 .double-video-player {
   display: flex;
@@ -270,7 +292,6 @@ onUnmounted(() => {
   float: left;
 }
 
-
 .loading {
   display: flex;
   justify-content: center;
@@ -290,7 +311,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-
 .stream-key-panel {
   display: flex;
   width: 100%;
@@ -303,5 +323,10 @@ onUnmounted(() => {
 
 .stream-key-input {
   width: 200px;
+}
+
+.file-info-form {
+  width: 500px;
+  background-color: #f5f5f5f5;
 }
 </style>

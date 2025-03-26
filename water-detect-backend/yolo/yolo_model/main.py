@@ -58,6 +58,8 @@ def AnalyseTsVideoFolder(path: str, fileUID: str):
         shutil.rmtree(tempAnalyseFolder)  # 删除临时文件夹
     else:
         logger.warning(f"temp folder not exist {tempAnalyseFolder}")
+    output_process.close()
+
     videoFilePath = os.path.join(SOURCE_PATH, f"analysed_{fileUID}.mp4")
     merge_video_files(destFolder, videoFilePath, 'ts')
     FileManager().CreateThumbnail(videoFilePath, f"analysed_{fileUID}", FileType.Video.value)
@@ -91,3 +93,6 @@ def resolveDoneVideo(output_process, videoPath, destFolder, filename):
         output_process = InitStreamOutput(videoPath, destFolder, 'index.m3u8', tsPrefix=ffname)
     WriteFrameAsStream(output_process, videoPath)
     return output_process
+
+def asyncResolveVideo(q, destFolder, filename):
+    pass

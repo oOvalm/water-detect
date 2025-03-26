@@ -53,19 +53,29 @@ def merge_video_files(input_folder, output_file, src_file_type):
     # 按文件名排序
     ts_files.sort()
 
-    # 加载所有视频剪辑
-    clips = [VideoFileClip(ts_file) for ts_file in ts_files]
+    # 创建一个包含所有 TS 文件路径的文本文件
+    list_file_path = os.path.join(input_folder, 'file_list.txt')
+    with open(list_file_path, 'w', encoding='utf-8') as f:
+        for ts_file in ts_files:
+            f.write(f"file '{ts_file}'\n")
 
-    # 合并所有视频剪辑
-    final_clip = concatenate_videoclips(clips, method="compose")
-
-    # 保存合并后的视频
-    final_clip.write_videofile(output_file, codec='h264_amf', audio_codec='aac')
-
-    # 关闭所有视频剪辑对象以释放资源
-    for clip in clips:
-        clip.close()
-    final_clip.close()
+    try:
+        # 构建 ffmpeg 命令
+        command = [
+            'ffmpeg',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', list_file_path,
+            '-c:v', 'h264_amf',
+            '-c:a', 'aac',
+            output_file
+        ]
+        # 执行 ffmpeg 命令
+        subprocess.run(command, check=True)
+        logger.info(f"合并完成，输出文件: {output_file}")
+    finally:
+        if os.path.exists(list_file_path):
+            os.remove(list_file_path)
 
 
 

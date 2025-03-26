@@ -65,7 +65,7 @@ def AnalyseVideo(filePath, outputFolder, destName):
     model(filePath, save=True, project=outputFolder, name=uid)
     srcFilename = filePath.split('\\')[-1].split('.')[0]
     srcPath = f"{outputFolder}/{uid}/{srcFilename}.avi"
-    DestPath = f"{outputFolder}/{uid}/{destName}.mp4"
+    DestPath = f"{outputFolder}/{uid}/{destName}"
     CompressVideo(srcPath, DestPath)
     return DestPath
 

@@ -101,16 +101,17 @@ def GetFromRemote(file_path, destFolderPath, outputFilename):
                 'output_filename': outputFilename,
                 'file_type': 'video'
             }
-            response = requests.post(url, files=files, timeout=300, data=data)  # 分析时间可能很长, 5min
+            response = requests.post(url, files=files, timeout=300000, data=data)  # 分析时间可能很长, 5min
             if response.status_code == 200:
                 output_file_path = f"{destFolderPath}/{outputFilename}"
                 with open(output_file_path, 'wb') as output_file:
                     output_file.write(response.content)
+                return output_file_path
             else:
-                logger.info(f'Upload failed: {response.text}')
-    except FileNotFoundError:
+                raise Exception(f'Upload failed: {response.text}')
+    except FileNotFoundError as e:
         logger.error('File not found')
-
+        raise e
 def GetFromRemoteImage(image, **kwargs):
     url = settings.REMOTE_DETECT_URL
     try:
