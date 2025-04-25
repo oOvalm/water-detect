@@ -1,7 +1,10 @@
 import json
 import logging
+import threading
+import time
 
 import pika
+from pika.exceptions import AMQPConnectionError
 
 from common.db_model import FileType
 from common.mqModels import AnalyseTask
@@ -10,24 +13,30 @@ from yolo.yolo_model.main import AnalyseTsVideoFolder, AnalyseImage, AnalyseImag
 
 
 def initYoloConsumer():
-    print('initConsumer, yolo-analyse')
-    params = pika.ConnectionParameters(
-        host=settings.RABBITMQ_CONFIG['host'],
-        port=settings.RABBITMQ_CONFIG['port'],
-        credentials=pika.PlainCredentials(
-            settings.RABBITMQ_CONFIG['username'],
-            settings.RABBITMQ_CONFIG['password']
-        ),
-        heartbeat=60
-    )
-    connection = pika.BlockingConnection(params)
-    channel = connection.channel()
-    channel.queue_declare(queue='yolo-analyse', durable=True)
-    channel.basic_consume(queue='yolo-analyse',
-                          auto_ack=True,
-                          on_message_callback=consumeHandler)
-    print('yolo-analyse init done, start consume')
-    channel.start_consuming()
+    while True:
+        try:
+            print('initConsumer, yolo-analyse')
+            params = pika.ConnectionParameters(
+                host=settings.RABBITMQ_CONFIG['host'],
+                port=settings.RABBITMQ_CONFIG['port'],
+                credentials=pika.PlainCredentials(
+                    settings.RABBITMQ_CONFIG['username'],
+                    settings.RABBITMQ_CONFIG['password']
+                ),
+                heartbeat=60,
+                blocked_connection_timeout=30000000000,
+            )
+            connection = pika.BlockingConnection(params)
+            channel = connection.channel()
+            channel.queue_declare(queue='yolo-analyse', durable=True)
+            channel.basic_consume(queue='yolo-analyse',
+                                  auto_ack=True,
+                                  on_message_callback=consumeHandler)
+            print('yolo-analyse init done, start consume')
+            channel.start_consuming()
+        except AMQPConnectionError:
+            print("Connection lost, trying to reconnect in 5 seconds...")
+            time.sleep(5)
 
 logger = logging.getLogger(__name__)
 SKIP = False
@@ -49,8 +58,7 @@ def consumeHandler(ch, method, properties, body):
             return
         filePath = FileManager().GetFilePath(fileInfo)
         if mqInfo.fileType == FileType.Video.value:
-            analysedUID, size = AnalyseTsVideoFolder(tsFolder, mqInfo.fileUID)
-            FileInfo.objects.createAnalysedFile(mqInfo.fileID, analysedUID, size)
+            threading.Thread(target=AnalyseTsVideoFolder, args=(tsFolder, mqInfo.fileUID)).start()
         elif mqInfo.fileType == FileType.Image.value:
             analysedUID, size = AnalyseImageWithPath(filePath, mqInfo.fileUID)
             FileInfo.objects.createAnalysedFile(mqInfo.fileID, analysedUID, size)

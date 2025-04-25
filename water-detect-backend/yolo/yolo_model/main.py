@@ -59,14 +59,15 @@ def AnalyseTsVideoFolder(path: str, fileUID: str):
             q.put((videoPath, filename))
 
 
+    q.put(None)
+    event_loop_thread.join()
+
     for thread in threads:
         thread.join()
     if os.path.exists(tempAnalyseFolder):
         shutil.rmtree(tempAnalyseFolder)  # 删除临时文件夹
     else:
         logger.warning(f"temp folder not exist {tempAnalyseFolder}")
-    q.put(None)
-    event_loop_thread.join()
 
     videoFilePath = os.path.join(SOURCE_PATH, f"analysed_{fileUID}.mp4")
     merge_video_files(destFolder, videoFilePath, 'ts')
@@ -115,7 +116,8 @@ def process_video_queue(queue, destFolder, fileUID, tot):
         redisService.UploadAnalyseProcess(fileUID, total=tot, finished=doneNum)
         queue.task_done()
     if output_process:
-        output_process.close()
+        output_process.stdin.close()
+        output_process.wait()
         output_process.terminate()
         try:
             output_process.wait(timeout=10)  # 等待子进程退出

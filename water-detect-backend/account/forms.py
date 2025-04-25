@@ -30,7 +30,7 @@ class RegisterForm(forms.Form):
 
     def ConvertToUser(self)-> User :
         user = User()
-        user.name = self.cleaned_data.get('username')
+        user.username = self.cleaned_data.get('username')
         user.email = self.cleaned_data.get('email')
         user.password = self.cleaned_data.get('password')
         return user

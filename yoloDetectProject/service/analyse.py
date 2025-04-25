@@ -12,7 +12,7 @@ from ultralytics import YOLO
 USE_MOCK = False # 测试时使用灰度图代替YOLO检测
 logger = logging.getLogger(__name__)
 
-YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\yoloDetectProject\service\model\water_detect_model_45itr.pt'
+YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\yoloDetectProject\service\model\best.pt'
 model = YOLO(YOLO_MODEL_PATH)
 
 BASE_FOLDER = r'D:\coding\graduation-design\water-detect\yoloDetectProject\service\tmp'

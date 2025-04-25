@@ -199,7 +199,7 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import "@/assets/file.list.scss";
+@use "@/assets/file.list.scss";
 
 .file-list {
   margin-top: 10px;

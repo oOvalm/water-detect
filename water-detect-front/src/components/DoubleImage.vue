@@ -5,13 +5,19 @@
     </div>
     <div class="splitter" @mousedown="startDrag"></div>
     <div class="right-image" :style="{ width: 100 - leftWidth + '%' }">
-      <img class="image-contain" :src="analysedUrl" alt="Right Image">
+      <div v-if="isLoading" class="loading">
+        <el-icon class="is-loading">
+          <Loading/>
+        </el-icon>
+      </div>
+      <img v-else class="image-contain" :src="analysedUrl" alt="Right Image">
     </div>
   </div>
 </template>
 
 <script setup>
-import {ref} from 'vue';
+import {ref, onMounted, onUnmounted} from 'vue';
+import {Loading} from "@element-plus/icons-vue";
 
 const props = defineProps({
   originUrl: {
@@ -27,6 +33,8 @@ const leftWidth = ref(50);
 let isDragging = false;
 let startX = 0;
 let startWidth = 0;
+const isLoading = ref(true);
+let intervalId;
 
 const startDrag = (e) => {
   isDragging = true;
@@ -49,6 +57,31 @@ const endDrag = () => {
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', endDrag);
 };
+
+const fetchImage = async () => {
+  console.log("fetch image")
+  try {
+    const response = await fetch(props.analysedUrl);
+    if (!response.ok) {
+      console.log("not finished")
+      return
+    }
+    isLoading.value = false;
+    clearInterval(intervalId);
+    intervalId = null
+  } catch (error) {
+    isLoading.value = true;
+  }
+};
+
+onMounted(() => {
+  fetchImage();
+  intervalId = setInterval(fetchImage, 1000);
+});
+
+onUnmounted(() => {
+  if (intervalId) clearInterval(intervalId);
+});
 </script>
 
 <style scoped>
@@ -78,5 +111,10 @@ const endDrag = () => {
   width: 5px;
   background-color: #ccc;
   cursor: col-resize;
+}
+
+.loading {
+  font-size: 24px;
+  color: #999;
 }
 </style>

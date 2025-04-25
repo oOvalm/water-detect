@@ -1,14 +1,30 @@
 from rest_framework import serializers
 
-from database.models import FileInfo
+from database.models import FileInfo, AnalyseFileRef
 from database.models import StreamKeyInfo
 
 
 class FileInfoSerializer(serializers.ModelSerializer):
+    opposite_file_id = serializers.SerializerMethodField()
+    is_analysed = serializers.SerializerMethodField()
+
     class Meta:
         model = FileInfo
         fields = '__all__'
-        function = '__all__'
+
+    def get_opposite_file_id(self, obj):
+        try:
+            file_ref = AnalyseFileRef.objects.get(file_id=obj.id)
+            return file_ref.opposite_file_id
+        except AnalyseFileRef.DoesNotExist:
+            return None
+
+    def get_is_analysed(self, obj):
+        try:
+            file_ref = AnalyseFileRef.objects.get(file_id=obj.id)
+            return file_ref.is_analysed
+        except AnalyseFileRef.DoesNotExist:
+            return None
 
 
 

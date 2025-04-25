@@ -48,8 +48,8 @@ def capture_streamNanalyse(app, stream_key, event, que):
     # ctx 用于存此次分析的上下文
     # process 输入流进程
     process, ctx = None, {}
+    stream_name = f"{app}_{stream_key}"
     try:
-        stream_name = f"{app}_{stream_key}"
         log.info(f"start capture {stream_name}")
         # 抢流的监听锁
         with RedisLock(GetDefaultRedis(), f"capture_ori_stream:{stream_name}", expire=5) as r:
@@ -87,8 +87,8 @@ def capture_streamNanalyse(app, stream_key, event, que):
                 '-c:a', 'aac',
                 '-b:v', '500k',  # 设置视频比特率
                 '-f', 'hls',
-                '-hls_time', '10',
-                '-hls_list_size', '6',
+                '-hls_time', '1',
+                '-hls_list_size', '10',
                 hls_path
             ]
 
@@ -133,12 +133,14 @@ def capture_streamNanalyse(app, stream_key, event, que):
     except Exception as e:
         print("capture_ori_stream error", e)
     finally:
+        redisService.DoneStreamDone(stream_name)
         if process is not None and process.poll() is None:
             process.kill()
         outputProcess = ctx.get('outputProcess')
         if outputProcess is not None and outputProcess.poll() is None:
             outputProcess.stdin.close()
             outputProcess.wait()
+            outputProcess.terminate()
         print('capture return')
         if not event.is_set():
             event.set()

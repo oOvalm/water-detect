@@ -19,7 +19,8 @@
         </el-progress>
       </div>
       <div>
-        <el-form :model="fileInfo" v-if="fileInfo.id" size="small" class="file-info-form" title="当前播放的文件信息">
+        <el-form :model="fileInfo" v-if="fileInfo.id" size="small" class="file-info-form" title="当前为文件对比分析"
+                 label-width="auto">
           <el-form-item label="文件名">
             <span>{{ fileInfo.filename }}</span>
           </el-form-item>
@@ -31,6 +32,21 @@
           </el-form-item>
           <el-form-item label="上传时间">
             <span>{{ formatDate(fileInfo.create_time) }}</span>
+          </el-form-item>
+        </el-form>
+        <el-form :model="streamInfo" v-if="streamInfo.id" size="small" class="file-info-form"
+                 title="当前为实时检测对比分析" label-width="auto">
+          <el-form-item label="串流id">
+            <span>{{ streamInfo.id }}</span>
+          </el-form-item>
+          <el-form-item label="来自用户">
+            <span>{{ streamInfo.username }}</span>
+          </el-form-item>
+          <el-form-item label="名称">
+            <span>{{ streamInfo.stream_name }}</span>
+          </el-form-item>
+          <el-form-item label="详情">
+            <span>{{ streamInfo.stream_description }}</span>
           </el-form-item>
         </el-form>
       </div>
@@ -115,7 +131,9 @@ let timer = null;
 const streamKey = ref('');
 const isStreaming = ref(false);
 const showStreamAnalysed = ref(false);
+const streamInfo = ref({});
 const uploadRTSPStream = () => {
+  fileInfo.value = {};
   httpRequest.get(`/stream/proxy/live/${streamKey.value}`).then(({data}) => {
     console.log(data)
     originUrl.value = `/stream/${data}`;
@@ -128,6 +146,18 @@ const uploadRTSPStream = () => {
     console.log(e)
     message.error(`获取直播连接失败: ${e.response.data}`)
   })
+  httpRequest.get('stream/streamkeyinfo/byid', {
+    params: {id: streamKey.value},
+  }).then(({data}) => {
+    if (data.code !== 0) throw data.msg
+    streamInfo.value = data.data
+    httpRequest.get(`account/${streamInfo.value.user_id}`).then(({data}) => {
+      if (data.code !== 0) return;
+      streamInfo.value.username = data.data.username;
+    })
+  }).catch((e) => {
+    message.error("获取流信息失败")
+  })
 };
 
 const switchSync = async () => {
@@ -138,7 +168,7 @@ const uploadFile = async (fileData) => {
   emit("addFile", {file: fileData.file, filePid: -2});
 }
 const isShowAnalysedVideo = () => {
-  return analyseStatus.value === 2 || analyseStatus.value === 3 || showStreamAnalysed.value
+  return analysedUrl.value !== '' || showStreamAnalysed.value
 }
 
 const fetchProcess = () => {
@@ -153,25 +183,30 @@ const fetchProcess = () => {
     })
   }
 
-  if (analyseStatus.value !== 3) {
+  if (analyseStatus.value !== 3 && analyseProgress.value !== 100) {
     httpRequest.get(`/analyse/getAnalyseProcess/${fileInfo.value.file_uid}`).then(({data}) => {
       if (data.code !== 0) return
       data = data.data;
       analyseStatus.value = data.analyseStatus
       if (analyseStatus.value === 3) {
-        analysedUrl.value = `/directory/ts/getVideoInfo/${fileInfo.value.id}?analysed=true`;
         analyseProgress.value = 100;
       } else if (analyseStatus.value === 2) {
-        analysedUrl.value = `/directory/ts/getVideoInfo/${fileInfo.value.id}?analysed=true`;
         analyseProgress.value = (data.finished / data.total * 100).toFixed(2);
       } else {
         analyseProgress.value = 0;
       }
     })
   }
+
+  if (analysedUrl.value === '') {
+    httpRequest.get(`/directory/ts/getVideoInfo/${fileInfo.value.id}?analysed=true`).then((resp) => {
+      analysedUrl.value = `/directory/ts/getVideoInfo/${fileInfo.value.id}?analysed=true`;
+    })
+  }
 }
 
 const uploadDone = ({fileUID, ty, fileID}) => {
+  streamInfo.value = {};
   let url = ''
   if (ty === 'id') {
     url = `/directory/FileInfo/id/${fileID}`
@@ -191,9 +226,9 @@ const uploadDone = ({fileUID, ty, fileID}) => {
         fetchProcess()
       }, 5000)
     } else if (data.data.file_type === fileTypes.Image) {
-      console.log("xxx")
+      console.log(data.data)
       originUrl.value = `/api/directory/image?fileID=${data.data.id}`
-      analysedUrl.value = `/api/directory/image?fileID=${data.data.id}`
+      analysedUrl.value = `/api/directory/image?fileID=${data.data.id}&is_analysed=true`
       fileInfo.value = data.data;
     }
   }).catch((e) => {
@@ -201,17 +236,6 @@ const uploadDone = ({fileUID, ty, fileID}) => {
   })
 }
 defineExpose({uploadDone});
-
-// watch(fileInfo, (newVal) => {
-//   if (newVal) {
-//     console.log(newVal);
-//     nextTick(() => {
-//       if (newVal.id) {
-//         addListener();
-//       }
-//     })
-//   }
-// })
 
 onMounted(() => {
   let tmp = localStorage.getItem("isSyncVideo")

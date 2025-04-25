@@ -18,7 +18,7 @@ USE_REMOTE = True
 BASE_TMP = os.path.join(settings.MEDIA_ROOT, 'analyse_tmp')
 CUT_PATH = os.path.join(settings.MEDIA_ROOT, 'cuts')
 SOURCE_PATH = os.path.join(settings.MEDIA_ROOT, 'files')
-YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\water-detect-backend\yolo\yolo_model\yolov8n.pt'
+YOLO_MODEL_PATH = r'D:\coding\graduation-design\water-detect\yoloDetectProject\service\model\best.pt'
 # 加载 YOLOv11n 模型
 @singleton
 class singleYOLO(YOLO):
@@ -91,10 +91,17 @@ def AnalyseImage(image, **kwargs):
     return result[0].plot()
 
 
+def compress_video(input_path, output_path, bitrate="500k"):
+    video = VideoFileClip(input_path)
+    video.write_videofile(output_path, bitrate=bitrate)
+    video.close()
 
 def GetFromRemote(file_path, destFolderPath, outputFilename):
     url = settings.REMOTE_DETECT_URL
+
     try:
+        compress_video(file_path, os.path.join(destFolderPath, 'tmp.mp4'), bitrate="500k")
+        file_path = os.path.join(destFolderPath, 'tmp.mp4')
         with open(file_path, 'rb') as file:
             files = {'file': file}
             data = {

@@ -371,21 +371,6 @@ const doSubmit = () => {
     })
   });
 };
-
-//QQ登录
-// const qqLogin = async () => {
-//   let result = await proxy.Request({
-//     url: api.qqlogin,
-//     params: {
-//       callbackUrl: route.query.redirectUrl || "",
-//     },
-//   });
-//   if (!result) {
-//     return;
-//   }
-//   proxy.VueCookies.remove("userInfo");
-//   document.location.href = result.data;
-// };
 </script>
 
 <style lang="scss" scoped>

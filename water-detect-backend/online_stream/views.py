@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework import viewsets, filters
 from rest_framework.pagination import PageNumberPagination
 
+from common.customResponse import NewErrorResponse, NewSuccessResponse
 from common_service import redisService
 from common_service.lock import RedisLock
 from common_service.redisService import GetDefaultRedis
@@ -144,6 +145,18 @@ def stream_proxy(request, app, stream_id):
     except Exception as e:
         log.error(e)
         return HttpResponse(f"Error: {str(e)}", status=500)
+
+
+@api_view(['GET'])
+def GetStreamInfo(request):
+    stream_key_id = request.GET.get('id')
+    if stream_key_id is None:
+        return NewErrorResponse(400, "id not found")
+    stream_info = StreamKeyInfo.objects.filter(pk=stream_key_id).first()
+    if stream_info is None:
+        return NewErrorResponse(400, "info not found")
+    stream_info.stream_key = None
+    return NewSuccessResponse(StreamKeyInfoSerializer(stream_info).data)
 
 
 class CustomPagination(PageNumberPagination):

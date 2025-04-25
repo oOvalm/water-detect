@@ -66,8 +66,8 @@ class GenerateCaptchaView(APIView):
             # 发送邮件
             print(f"send email to {email}, {verification_code}")
             redisService.SetEmailCaptcha(email, verification_code)
-            if not DEBUG:
-                send_mail(subject, message, from_email, recipient_list)
+            # if not DEBUG:
+            send_mail(subject, message, from_email, recipient_list)
             return NewSuccessResponse()
         except json.JSONDecodeError:
             return NewErrorResponse(400, '无效json')
@@ -180,7 +180,22 @@ class AvatarUploadView(APIView):
         return Response({'msg': '上传成功', 'url': f"account/{file_url}"}, status=status.HTTP_200_OK)
 
 
-class ProfileUpdateView(APIView):
+class UserInfo(APIView):
+    def get(self, request, userID):
+        try:
+            user = User.objects.get(id=userID)
+            user.password = None
+            return NewSuccessResponse({
+                "id": request.user.id,
+                "avatar": request.user.avatar,
+                "username": request.user.username,
+                "email": request.user.email,
+                "sex": request.user.sex,
+                "loi": request.user.last_login,
+            })
+        except User.DoesNotExist:
+            return NewErrorResponse(404, '用户不存在')
+
     def post(self, request, userID, *args, **kwargs):
         try:
             user = User.objects.get(id=userID)

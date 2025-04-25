@@ -20,10 +20,12 @@ def TestAnalyseVideo():
     AnalyseVideo(filePath, output_folder, destName)
 
 def TestAnalyseImage():
-    filePath = r"D:\coding\graduation-design\water-detect\yoloDetectProject\service\test-data\images\img.png"
-    output_folder = r"D:\coding\graduation-design\water-detect\yoloDetectProject\service\dest"
-    destName = "test"
-    AnalyseImage(filePath, output_folder, destName)
+    p1 = r"D:\coding\graduation-design\water-detect\yoloDetectProject\detect-model\water-2\valid\images\150_2023-Flood-Time-Lapse-VNzrOBGzkA4-_jpg.rf.8e4472d128a5e32d77c87600df43c734.jpg"
+    p2 = r"D:\coding\graduation-design\water-detect\yoloDetectProject\detect-model\water-2\valid\images\630_2023-Flood-Time-Lapse-VNzrOBGzkA4-_jpg.rf.4e38f4f27fe987cee2ff391de82ab899.jpg"
+    # filePath = r"D:\coding\graduation-design\water-detect\yoloDetectProject\service\test-data\images\xx.png"
+    output_folder = r"D:\coding\graduation-design\water-detect\yoloDetectProject\service\test-data\dest"
+    destName = "test2"
+    AnalyseImage(p2, output_folder, destName, destName)
 
 if __name__ == '__main__':
     TestAnalyseImage()

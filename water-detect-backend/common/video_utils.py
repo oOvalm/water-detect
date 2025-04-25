@@ -93,7 +93,7 @@ def InitStreamOutput(videoPath, destFolder, m3u8name, hlsListSize=0, tsPrefix=''
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
     cap.release()
-    hls_time = 5
+    hls_time = 1
     ffmpeg_command = [
         'ffmpeg',
         '-f', 'rawvideo',

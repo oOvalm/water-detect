@@ -28,7 +28,7 @@
         <span class="el-dropdown-link">
           <img :src="`/api/${userInfo.avatar}`" v-if="userInfo.avatar && userInfo.avatar.length > 0" alt="Avatar"
                class="avatar"/>
-          <el-avatar v-else :size="80" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"/>
+          <el-avatar v-else :size="50" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"/>
           {{ userInfo.username }}
           <el-icon class="el-icon--right"><arrow-down/></el-icon>
         </span>

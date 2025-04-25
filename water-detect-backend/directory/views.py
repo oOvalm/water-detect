@@ -249,14 +249,20 @@ class ThumbnailView(APIView):
 class ImageView(APIView):
     def get(self, request):
         fileID = request.GET.get('fileID')
+        isAnalysed = request.GET.get('is_analysed')
         if fileID is None:
             raise ParamError("Missing fileID parameter")
         file = FileInfo.objects.get(id=fileID)
+        fileRef = file.GetAnalyseInfo()
+        if isAnalysed and len(isAnalysed) > 0 and ((isAnalysed == "true") != fileRef.is_analysed):
+            if fileRef is None:
+                return Response("not found", status=404)
+            file = FileInfo.objects.get(id=fileRef.opposite_file_id)
         file_path = FileManager().GetFilePath(file)
         if not os.path.exists(file_path):
             raise InternalServerError
-        thumbnail = open(file_path, 'rb')
-        return FileResponse(thumbnail, content_type='image/jpeg')
+        imagePath = open(file_path, 'rb')
+        return FileResponse(imagePath, content_type='image/jpeg')
 
 
 

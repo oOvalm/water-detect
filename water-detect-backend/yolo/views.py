@@ -11,8 +11,6 @@ from common_service import redisService
 from database.models import FileInfo
 
 log = logging.getLogger(__name__)
-
-# Create your views here.
 class AnalyseStatus(Enum):
     NotStart = 1
     Analysing = 2

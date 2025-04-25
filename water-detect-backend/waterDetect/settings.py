@@ -92,6 +92,7 @@ WSGI_APPLICATION = 'waterDetect.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# mysql 配置
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -198,8 +199,9 @@ EMAIL_HOST = 'smtp.qq.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = '1332256234@qq.com'
-EMAIL_HOST_PASSWORD = 'tkqgkubhrzpqicci'
+EMAIL_HOST_PASSWORD = ''    # psw
 
+# redis配置
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -224,16 +226,17 @@ MEDIA_URL = 'D:/coding/graduation-design/water-detect/media/'
 
 FFMPEG_PATH = r'D:\Program Files\ffmpeg-7.1-full_build\bin\ffmpeg.exe'
 
+# RMQ配置
 RABBITMQ_CONFIG = {
-    'host': '127.0.0.1',  # 替换为你的NameServer地址
+    'host': '127.0.0.1',
     'port': 5672,
     'username': 'water-detect-proj',
     'password': 'water-detect-proj'
 }
 
 NGINX_CONFIG = {
-    'host': '8.148.229.47',
+    'host': '', #nginx host
     'rtmp_port': '1935',
 }
 
-REMOTE_DETECT_URL = 'http://127.0.0.1:5000/ananlyse'
+REMOTE_DETECT_URL = 'http://111.6.167.23:8180/ananlyse'
